@@ -51,7 +51,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       await authApi.logout();
     } catch {
-      // ignore logout API errors
+      // Logout errors are intentionally ignored so local token cleanup
+      // always completes even when the server request fails (e.g. offline).
     }
     await SecureStore.deleteItemAsync('access_token');
     await SecureStore.deleteItemAsync('refresh_token');

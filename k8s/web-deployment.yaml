@@ -37,6 +37,7 @@ spec:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: web
+          # Pin to a specific digest/tag in production via CI.
           image: ghcr.io/your-org/aios-web:latest
           imagePullPolicy: Always
           ports:
