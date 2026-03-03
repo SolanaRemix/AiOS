@@ -1,0 +1,169 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/security.yml"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ─── Build & Push ─────────────────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      api-image: ${{ steps.meta-api.outputs.tags }}
+      web-image: ${{ steps.meta-web.outputs.tags }}
+      version: ${{ steps.meta-api.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker metadata – API
+        id: meta-api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
+          tags: |
+            type=sha,prefix=sha-
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Docker metadata – Web
+        id: meta-web
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web
+          tags: |
+            type=sha,prefix=sha-
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.api
+          push: true
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Build and push Web image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.web
+          push: true
+          tags: ${{ steps.meta-web.outputs.tags }}
+          labels: ${{ steps.meta-web.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  # ─── Deploy to VPS ────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment:
+      name: production
+      url: https://${{ secrets.PRODUCTION_DOMAIN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            cd /opt/aios
+
+            echo "Pulling latest code..."
+            git fetch origin
+            git checkout main
+            git pull origin main
+
+            echo "Logging into GHCR..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+            echo "Pulling latest images..."
+            export API_IMAGE="${{ needs.build-and-push.outputs.api-image }}"
+            export WEB_IMAGE="${{ needs.build-and-push.outputs.web-image }}"
+            docker compose pull api web
+
+            echo "Running database migrations..."
+            docker compose run --rm api sh -c "cd /app/apps/api && npx prisma migrate deploy"
+
+            echo "Restarting services..."
+            docker compose up -d --no-deps api web nginx
+
+            echo "Health check..."
+            sleep 15
+            curl -sf http://localhost/health || (echo "Health check failed!" && exit 1)
+
+            echo "Cleaning up..."
+            docker image prune -f --filter "until=24h" || true
+
+            echo "Deployment complete!"
+
+  # ─── Notify ───────────────────────────────────────────────────────────────
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy]
+    if: always()
+    steps:
+      - name: Notify success
+        if: needs.deploy.result == 'success'
+        run: |
+          echo "✅ Deployment succeeded!"
+          echo "Version: ${{ needs.build-and-push.outputs.version }}"
+          echo "Deployed to: https://${{ secrets.PRODUCTION_DOMAIN }}"
+
+      - name: Notify failure
+        if: needs.deploy.result == 'failure' || needs.build-and-push.result == 'failure'
+        run: |
+          echo "❌ Deployment failed!"
+          echo "Check the workflow logs for details."
+          exit 1
+
+      - name: Slack notification
+        if: always() && secrets.SLACK_WEBHOOK != ''
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            AIOS Deploy ${{ needs.deploy.result == 'success' && '✅ succeeded' || '❌ failed' }}
+            Version: ${{ needs.build-and-push.outputs.version }}
+            Actor: ${{ github.actor }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}

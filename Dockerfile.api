@@ -1,0 +1,67 @@
+# ─── Stage 1: Builder ─────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
+# Copy package files
+COPY package*.json ./
+COPY apps/api/package*.json ./apps/api/
+COPY packages/ ./packages/
+
+# Install all dependencies
+RUN npm ci --workspace=apps/api
+
+# Copy source
+COPY apps/api/ ./apps/api/
+
+# Generate Prisma client
+RUN cd apps/api && npx prisma generate
+
+# Build TypeScript
+RUN cd apps/api && npm run build
+
+# ─── Stage 2: Production ──────────────────────────────────────────────────────
+FROM node:20-alpine AS production
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Install curl for health check
+RUN apk add --no-cache curl
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && adduser -S aios -u 1001
+
+# Copy package files and install production deps only
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/apps/api/package*.json ./apps/api/
+
+RUN npm ci --workspace=apps/api --omit=dev && npm cache clean --force
+
+# Copy built application
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
+
+# Regenerate Prisma client for production
+RUN cd apps/api && npx prisma generate
+
+# Copy node_modules with Prisma binary
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
+# Set ownership
+RUN chown -R aios:nodejs /app
+
+USER aios
+
+EXPOSE 4000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:4000/health || exit 1
+
+WORKDIR /app/apps/api
+
+CMD ["node", "dist/index.js"]
