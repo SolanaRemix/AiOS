@@ -1,0 +1,184 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [pgvector(map: "vector", schema: "extensions"), pgcrypto]
+}
+
+// ─── Tenant (organisation / workspace) ───────────────────────────────────────
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("free") // free | starter | pro | enterprise
+  status    String   @default("active") // active | suspended | cancelled
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  projects     Project[]
+  agentLogs    AgentLog[]
+  usage        Usage[]
+  billing      Billing?
+  secrets      Secret[]
+  embeddings   VectorEmbedding[]
+
+  @@index([slug])
+  @@index([status])
+  @@map("tenants")
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+model User {
+  id        String   @id @default(cuid())
+  tenantId  String
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("user") // super-admin | admin | dev | user
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  projects Project[]
+  usage    Usage[]
+
+  @@index([tenantId])
+  @@index([email])
+  @@map("users")
+}
+
+// ─── Project ──────────────────────────────────────────────────────────────────
+model Project {
+  id          String   @id @default(cuid())
+  tenantId    String
+  userId      String
+  name        String
+  description String?
+  status      String   @default("active") // active | archived | draft
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id])
+  agentLogs  AgentLog[]
+  embeddings VectorEmbedding[]
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@map("projects")
+}
+
+// ─── AgentLog ─────────────────────────────────────────────────────────────────
+model AgentLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  projectId String?
+  agentType String   // builder | debugger | tester | deployment | refactor | security | designer | analytics | devops
+  input     String
+  output    String
+  model     String
+  tokens    Int      @default(0)
+  cost      Float    @default(0)
+  duration  Int      @default(0) // milliseconds
+  status    String   @default("pending") // pending | running | completed | failed | cancelled
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([projectId])
+  @@index([agentType])
+  @@index([status])
+  @@index([createdAt])
+  @@map("agent_logs")
+}
+
+// ─── Usage ────────────────────────────────────────────────────────────────────
+model Usage {
+  id       String   @id @default(cuid())
+  tenantId String
+  userId   String
+  model    String
+  tokens   Int
+  cost     Float
+  date     DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([date])
+  @@index([model])
+  @@map("usage")
+}
+
+// ─── Billing ──────────────────────────────────────────────────────────────────
+model Billing {
+  id                     String    @id @default(cuid())
+  tenantId               String    @unique
+  stripeCustomerId       String?   @unique
+  stripeSubscriptionId   String?   @unique
+  plan                   String    @default("free")
+  status                 String    @default("inactive") // active | inactive | past_due | cancelling | cancelled
+  currentPeriodEnd       DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+  @@map("billing")
+}
+
+// ─── Secret (tenant API keys / credentials) ───────────────────────────────────
+model Secret {
+  id             String   @id @default(cuid())
+  tenantId       String
+  key            String   // e.g. "OPENAI_API_KEY"
+  encryptedValue String   // AES-256-GCM encrypted
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+  @@map("secrets")
+}
+
+// ─── VectorEmbedding (pgvector for agent memory) ──────────────────────────────
+model VectorEmbedding {
+  id        String                      @id @default(cuid())
+  tenantId  String
+  projectId String?
+  content   String
+  embedding Unsupported("vector(1536)")?
+  metadata  Json                        @default("{}")
+  createdAt DateTime                    @default(now())
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([projectId])
+  @@map("vector_embeddings")
+}
