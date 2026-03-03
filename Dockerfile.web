@@ -7,7 +7,6 @@ RUN apk add --no-cache libc6-compat
 
 COPY package*.json ./
 COPY apps/web/package*.json ./apps/web/
-COPY packages/ ./packages/
 
 RUN npm ci --workspace=apps/web
 

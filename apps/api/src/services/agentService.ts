@@ -119,6 +119,12 @@ export class AgentService {
     return job;
   }
 
+  /** Enqueue a job and return the queue job id (string) */
+  async enqueueJob(task: AgentTask): Promise<string> {
+    const job = await this.enqueueTask(task);
+    return String(job.id);
+  }
+
   /** Get job status and result */
   async getJobStatus(jobId: string, tenantId: string) {
     const log = await prisma.agentLog.findFirst({

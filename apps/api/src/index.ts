@@ -16,6 +16,8 @@ import agentRoutes from './routes/agents';
 import federationRoutes from './routes/federation';
 import billingRoutes from './routes/billing';
 import adminRoutes from './routes/admin';
+import planRoutes from './routes/plans';
+import jobRoutes from './routes/jobs';
 
 const app: Application = express();
 const PORT = process.env.PORT ?? 4000;
@@ -81,6 +83,8 @@ app.use('/api/agents', agentRoutes);
 app.use('/api/federation', federationRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/plans', planRoutes);
+app.use('/api/jobs', jobRoutes);
 
 // ─── 404 handler ──────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {

@@ -191,6 +191,79 @@ async function main() {
   }
   console.log(`✅  Sample usage records created`);
 
+  // ─── Plans & Feature Gates ────────────────────────────────────────────────────
+  const planDefs = [
+    {
+      id: 'plan-free',
+      name: 'free',
+      displayName: 'Free',
+      description: 'Get started with AIOS at no cost.',
+      priceMonthly: 0,
+      priceYearly: 0,
+      features: ['3 projects', '1 agent', '10K tokens/month', 'Community support'],
+      limits: { max_projects: 3, max_agents: 1, tokensPerMonth: 10000 },
+      sortOrder: 0,
+    },
+    {
+      id: 'plan-starter',
+      name: 'starter',
+      displayName: 'Starter',
+      description: 'For small teams and indie developers.',
+      priceMonthly: 29,
+      priceYearly: 290,
+      features: ['10 projects', '5 agents', '100K tokens/month', 'Email support', 'LLM federation'],
+      limits: { max_projects: 10, max_agents: 5, tokensPerMonth: 100000 },
+      sortOrder: 1,
+    },
+    {
+      id: 'plan-pro',
+      name: 'pro',
+      displayName: 'Pro',
+      description: 'For growing teams that need more power.',
+      priceMonthly: 99,
+      priceYearly: 990,
+      features: ['Unlimited projects', '20 agents', '1M tokens/month', 'Priority support', 'All LLMs', 'Custom models'],
+      limits: { max_projects: 'unlimited', max_agents: 20, tokensPerMonth: 1000000 },
+      sortOrder: 2,
+    },
+    {
+      id: 'plan-enterprise',
+      name: 'enterprise',
+      displayName: 'Enterprise',
+      description: 'Unlimited scale with dedicated support.',
+      priceMonthly: 499,
+      priceYearly: 4990,
+      features: ['Unlimited everything', 'Dedicated support', 'SLA', 'SSO', 'Audit logs', 'On-premise option'],
+      limits: { max_projects: 'unlimited', max_agents: 'unlimited', tokensPerMonth: 'unlimited' },
+      sortOrder: 3,
+    },
+  ];
+
+  for (const p of planDefs) {
+    await prisma.plan.upsert({
+      where: { id: p.id },
+      update: { displayName: p.displayName, priceMonthly: p.priceMonthly, priceYearly: p.priceYearly },
+      create: p,
+    });
+    console.log(`✅  Plan: ${p.displayName}`);
+  }
+
+  // Feature gates for free plan
+  const freeGates = [
+    { feature: 'max_projects', value: '3', description: 'Max 3 active projects' },
+    { feature: 'max_agents', value: '1', description: 'Max 1 concurrent agent' },
+    { feature: 'federation', value: 'false', description: 'LLM federation disabled' },
+    { feature: 'custom_models', value: 'false', description: 'Custom models disabled' },
+  ];
+  for (const g of freeGates) {
+    await prisma.featureGate.upsert({
+      where: { planId_feature: { planId: 'plan-free', feature: g.feature } },
+      update: { value: g.value },
+      create: { planId: 'plan-free', ...g },
+    });
+  }
+  console.log(`✅  Feature gates for Free plan`);
+
   console.log('\n🎉  Seed completed successfully!');
   console.log('\n📋  Credentials:');
   console.log(`    Super Admin: ${adminEmail} / ${adminPassword}`);
