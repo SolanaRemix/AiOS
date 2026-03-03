@@ -154,15 +154,16 @@ router.delete('/:id', requireRole(['admin']), async (req: Request, res: Response
       return;
     }
 
-    await prisma.user.delete({ where: { id, tenantId: req.tenant!.id } });
+    const result = await prisma.user.deleteMany({ where: { id, tenantId: req.tenant!.id } });
+    if (result.count === 0) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
     res.json({ message: 'User deleted' });
   } catch (err) {
     const msg = (err as Error).message;
-    if (msg.includes('Record to delete does not exist')) {
-      res.status(404).json({ error: 'User not found' });
-    } else {
-      res.status(500).json({ error: msg });
-    }
+    res.status(500).json({ error: msg });
   }
 });
 
