@@ -93,8 +93,19 @@ router.patch('/:id', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const user = await prisma.user.update({
+    // Ensure the user belongs to the current tenant before updating
+    const existing = await prisma.user.findFirst({
       where: { id, tenantId: req.tenant!.id },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
       data: result.data,
       select: { id: true, email: true, name: true, role: true, updatedAt: true },
     });
