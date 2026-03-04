@@ -19,7 +19,6 @@ const createSubscriptionSchema = z.object({
 router.post(
   '/webhook',
   webhookLimiter,
-  express.raw({ type: 'application/json' }),
   async (req: Request, res: Response): Promise<void> => {
     const sig = req.headers['stripe-signature'] as string;
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET ?? '';
