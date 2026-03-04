@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aios
+  labels:
+    name: aios
+    app.kubernetes.io/name: aios
+    app.kubernetes.io/part-of: aios-platform
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: aios-quota
+  namespace: aios
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    pods: "50"
+    services: "20"
+    persistentvolumeclaims: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: aios-limits
+  namespace: aios
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "128Mi"

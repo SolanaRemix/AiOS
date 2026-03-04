@@ -1,0 +1,153 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aios-api
+  namespace: aios
+  labels:
+    app: aios-api
+    app.kubernetes.io/name: aios-api
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: aios-platform
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: aios-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: aios-api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "4000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: aios-api
+      terminationGracePeriodSeconds: 30
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: [aios-api]
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: api
+          # Pin to a specific digest/tag in production via CI (e.g. sha-abc123).
+          # 'latest' is used here as a placeholder; the deploy workflow overrides
+          # this with the exact image SHA produced by the build step.
+          image: ghcr.io/your-org/aios-api:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 4000
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "4000"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: aios-secrets
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: aios-secrets
+                  key: REDIS_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: aios-secrets
+                  key: JWT_SECRET
+            - name: JWT_REFRESH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: aios-secrets
+                  key: JWT_REFRESH_SECRET
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aios-secrets
+                  key: ENCRYPTION_KEY
+          envFrom:
+            - configMapRef:
+                name: aios-config
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1001
+            capabilities:
+              drop: [ALL]
+      imagePullSecrets:
+        - name: ghcr-secret
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aios-api
+  namespace: aios
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aios-api
+  namespace: aios
+  labels:
+    app: aios-api
+spec:
+  type: ClusterIP
+  selector:
+    app: aios-api
+  ports:
+    - name: http
+      port: 4000
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aios-config
+  namespace: aios
+data:
+  LOG_LEVEL: info
+  NODE_ENV: production
+  APP_URL: https://app.aios.platform
+  API_URL: https://api.aios.platform

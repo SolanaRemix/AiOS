@@ -1,0 +1,81 @@
+appId: com.aios.platform
+productName: AIOS Platform
+copyright: Copyright © 2024 AIOS
+buildVersion: "1.0.0"
+
+directories:
+  output: dist
+  buildResources: assets
+
+files:
+  - main.js
+  - preload.js
+  - package.json
+  - "!node_modules/**"
+  - node_modules/electron-updater/**
+  - node_modules/electron-is-dev/**
+
+publish:
+  provider: github
+  owner: your-org
+  repo: aios
+
+win:
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+    - target: portable
+      arch: [x64]
+  icon: assets/icon.ico
+  certificateSubjectName: AIOS Platform
+  signingHashAlgorithms: [sha256]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  installerIcon: assets/installer.ico
+  uninstallerIcon: assets/uninstaller.ico
+  installerHeaderIcon: assets/installer-header.ico
+
+mac:
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+  icon: assets/icon.icns
+  category: public.app-category.productivity
+  darkModeSupport: true
+  hardenedRuntime: true
+  entitlements: assets/entitlements.mac.plist
+  entitlementsInherit: assets/entitlements.mac.plist
+
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64, arm64]
+    - target: deb
+      arch: [x64]
+    - target: rpm
+      arch: [x64]
+  icon: assets/icon.png
+  category: Office
+  maintainer: support@aios.app
+
+deb:
+  depends: [libgtk-3-0, libnotify4, libnss3, libxss1, libxtst6, xdg-utils, libatspi2.0-0]
+
+afterSign: scripts/notarize.js
