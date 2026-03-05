@@ -172,8 +172,12 @@ export class Kernel {
       }
       case 'terminate': {
         const { processId } = args as { processId: string };
+        const process = this.processManager.get(processId);
+        if (!process) {
+          throw new KernelProcessNotFoundError(processId);
+        }
         this.processManager.terminate(processId);
-        this.releaseResources(processId);
+        this.releaseResources(process.agentId);
         return null;
       }
       case 'contextSwitch': {
