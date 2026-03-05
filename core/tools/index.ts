@@ -4,7 +4,7 @@
  * No external dependencies – uses only Node.js built-ins.
  */
 
-import { Tool, ToolResult, ToolSchema } from './types';
+import { Tool, ToolResult } from './types';
 
 export { Tool, ToolResult, ToolSchema } from './types';
 
