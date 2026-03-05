@@ -75,7 +75,7 @@ export default function MonitorScreen() {
     { name: 'Tool Sandbox', status: 'degraded', latencyMs: 850 },
   ]);
 
-  const [events, setEvents] = useState<EventEntry[]>([
+  const [events] = useState<EventEntry[]>([
     { id: '1', type: 'agent.tool.executed', message: 'web_search completed in 340ms', time: '0:12', severity: 'info' },
     { id: '2', type: 'system.health', message: 'Tool sandbox latency elevated (850ms)', time: '0:38', severity: 'warn' },
     { id: '3', type: 'agent.lifecycle', message: 'coding-agent proc_a2f started', time: '1:05', severity: 'info' },
