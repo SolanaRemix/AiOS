@@ -14,26 +14,26 @@ Developer guide for building custom agents on the AiOS platform.
 
 ### Install the SDK
 
-```bash
-npm install @aios/sdk
-```
-
-Or if you are building inside the AiOS monorepo:
+The AiOS SDK is part of the `@aios/core` package in this monorepo:
 
 ```bash
 # From the repo root
 npm install   # installs all workspace packages
 ```
 
-### Initialize the Client
+To use `@aios/core` in your own project:
+
+```bash
+npm install @aios/core
+```
+
+### Import the Core Module
 
 ```typescript
-import { AiOSClient } from '@aios/sdk';
-
-const client = new AiOSClient({
-  apiUrl: process.env.AIOS_API_URL ?? 'http://localhost:3001',
-  apiKey: process.env.AIOS_API_KEY,
-});
+import { BaseAgent, AgentBuilder, AgentRegistry, AgentExecutor } from '@aios/core';
+import { ToolRegistry, calculatorTool, webSearchTool } from '@aios/core';
+import { MemoryManager } from '@aios/core';
+import { EventBus, EventTypes, withCorrelationId } from '@aios/core';
 ```
 
 ---
@@ -43,45 +43,39 @@ const client = new AiOSClient({
 The simplest way to define a custom agent is to extend `BaseAgent`:
 
 ```typescript
-import { BaseAgent, AgentContext, AgentResult } from '@aios/sdk';
+import { BaseAgent } from '@aios/core';
 
 export class GreetingAgent extends BaseAgent {
-  name = 'greeting-agent';
-  description = 'A simple agent that greets the user';
+  readonly name = 'greeting-agent';
+  readonly description = 'A simple agent that greets the user';
 
-  async run(context: AgentContext): Promise<AgentResult> {
-    const { userMessage, memory, llm } = context;
+  async onStart(): Promise<void> {
+    // Optional: set up resources before running
+  }
 
-    const response = await llm.complete({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'You are a friendly greeter. Keep responses short.' },
-        { role: 'user', content: userMessage },
-      ],
-    });
-
-    await memory.shortTerm.append({ role: 'assistant', content: response.text });
-
-    return {
-      output: response.text,
-      exitCode: 0,
-    };
+  async onStop(): Promise<void> {
+    // Optional: clean up resources
   }
 }
 ```
 
-### Register and Run
+### Run via AgentExecutor
 
 ```typescript
-import { AgentRegistry } from '@aios/sdk';
+import { AgentExecutor, AgentRegistry, createGeneralAgent } from '@aios/core';
 
-AgentRegistry.register(GreetingAgent);
+const registry = new AgentRegistry();
+const executor = new AgentExecutor();
 
-const process = await client.agents.spawn('greeting-agent', {
-  userMessage: 'Hello!',
+// Use a built-in template
+const agent = createGeneralAgent();
+registry.register(agent);
+
+// Execute with input
+const result = await executor.execute(agent, 'Hello!', {
+  correlationId: 'req-123',
+  userId: 'user-456',
 });
-
-console.log(process.output); // "Hello! Great to see you!"
 ```
 
 ---
@@ -91,22 +85,22 @@ console.log(process.output); // "Hello! Great to see you!"
 `AgentBuilder` provides a fluent API to configure agents without subclassing, useful for quickly composing agents from existing building blocks:
 
 ```typescript
-import { AgentBuilder } from '@aios/sdk';
+import { AgentBuilder } from '@aios/core';
 
-const researchAgent = AgentBuilder.create('quick-researcher')
+const researchAgent = new AgentBuilder()
+  .name('quick-researcher')
   .description('Researches a topic and returns a summary')
   .model('claude-3-5-sonnet-20241022')
-  .temperature(0.3)
   .maxTokens(2048)
   .systemPrompt(`You are a research assistant. When given a topic:
 1. Break it into key subtopics
 2. Summarize current knowledge on each
 3. Cite sources where possible`)
-  .tools(['web_search', 'calculator'])
-  .memory({ shortTermTokens: 4096, longTermEnabled: true })
+  .tools([/* tool instances from ToolRegistry */])
   .build();
 
-AgentRegistry.register(researchAgent);
+const registry = new AgentRegistry();
+registry.register(researchAgent);
 ```
 
 ### Builder Method Reference
@@ -132,12 +126,14 @@ Agents can only execute tools that are explicitly bound to them. This is both a 
 ### Binding Built-In Tools
 
 ```typescript
-const agent = AgentBuilder.create('analyst')
+import { AgentBuilder, calculatorTool, dateTimeTool, webSearchTool } from '@aios/core';
+
+const agent = new AgentBuilder()
+  .name('analyst')
   .tools([
-    'calculator',        // arithmetic
-    'date_time',         // current date/time
-    'web_search',        // internet search
-    'code_interpreter',  // run Python/JS code
+    calculatorTool,    // arithmetic
+    dateTimeTool,      // current date/time
+    webSearchTool,     // internet search (requires SEARCH_API_KEY)
   ])
   .build();
 ```
@@ -145,36 +141,31 @@ const agent = AgentBuilder.create('analyst')
 ### Creating and Binding a Custom Tool
 
 ```typescript
-import { defineTool, ToolRegistry } from '@aios/sdk';
+import { Tool, ToolRegistry } from '@aios/core';
 
-const stockPriceTool = defineTool({
+const stockPriceTool: Tool = {
   name: 'get_stock_price',
   description: 'Returns the current stock price for a given ticker symbol',
-  inputSchema: {
+  schema: {
     type: 'object',
     properties: {
       ticker: { type: 'string', description: 'Stock ticker, e.g. AAPL' },
     },
     required: ['ticker'],
   },
-  outputSchema: {
-    type: 'object',
-    properties: {
-      ticker: { type: 'string' },
-      price: { type: 'number' },
-      currency: { type: 'string' },
-    },
-  },
-  async handler({ ticker }) {
+  async execute(args) {
+    const ticker = args['ticker'] as string;
     const data = await fetchStockPrice(ticker); // your implementation
-    return { ticker, price: data.price, currency: 'USD' };
+    return { success: true, output: { ticker, price: data.price, currency: 'USD' } };
   },
-});
+};
 
-ToolRegistry.register(stockPriceTool);
+const registry = new ToolRegistry();
+registry.register(stockPriceTool);
 
-const tradingAgent = AgentBuilder.create('trading-analyst')
-  .tools(['get_stock_price', 'calculator'])
+const tradingAgent = new AgentBuilder()
+  .name('trading-analyst')
+  .tools([stockPriceTool, calculatorTool])
   .build();
 ```
 
@@ -182,66 +173,47 @@ const tradingAgent = AgentBuilder.create('trading-analyst')
 
 ## Memory Access
 
-Agents can read and write both short-term and long-term memory within their `run()` method via the `context.memory` handle.
+Agents can read and write both short-term and long-term memory via `MemoryManager`:
 
 ### Short-Term Memory
 
 Short-term memory is the conversation buffer for the current session:
 
 ```typescript
-async run(context: AgentContext) {
-  const { memory } = context;
+import { MemoryManager } from '@aios/core';
 
-  // Read recent messages
-  const history = await memory.shortTerm.getMessages();
+const memory = new MemoryManager();
 
-  // Append a message
-  await memory.shortTerm.append({ role: 'assistant', content: 'Here is my analysis...' });
+// Add a message for an agent
+memory.addMessage('agent-1', { role: 'user', content: 'Hello!' });
+memory.addMessage('agent-1', { role: 'assistant', content: 'Hi there!' });
 
-  // Clear the buffer (rarely needed)
-  await memory.shortTerm.clear();
-}
+// Retrieve context (combined short and long-term) 
+const context = memory.getContext('agent-1');
+console.log(context.shortTerm); // recent messages
+
+// Clear short-term memory
+memory.shortTerm('agent-1').clear();
 ```
 
-### Long-Term Memory (Vector Store)
+### Long-Term Memory
 
-Long-term memory persists across sessions and supports semantic search:
-
-```typescript
-async run(context: AgentContext) {
-  const { memory, userMessage } = context;
-
-  // Search for relevant memories
-  const relevant = await memory.longTerm.search(userMessage, { topK: 5 });
-  const context_text = relevant.map(m => m.content).join('\n');
-
-  // Store a new memory
-  await memory.longTerm.upsert(
-    'User prefers concise responses and uses TypeScript',
-    { type: 'user_preference', confidence: 0.9 }
-  );
-
-  // Build prompt with memory context
-  const prompt = `Relevant context:\n${context_text}\n\nUser: ${userMessage}`;
-}
-```
-
-### MemoryAccessAPI Reference
+Long-term memory persists entries and supports similarity search:
 
 ```typescript
-interface MemoryAccessAPI {
-  shortTerm: {
-    getMessages(): Promise<Message[]>;
-    append(message: Message): Promise<void>;
-    getTokenCount(): Promise<number>;
-    clear(): Promise<void>;
-  };
-  longTerm: {
-    search(query: string, options?: { topK?: number; minScore?: number }): Promise<MemoryEntry[]>;
-    upsert(content: string, metadata?: object): Promise<string>;
-    delete(id: string): Promise<void>;
-  };
-}
+import { LongTermMemory } from '@aios/core';
+
+const ltm = new LongTermMemory();
+
+// Store a memory
+const id = ltm.store('User prefers concise responses', { type: 'user_preference' });
+
+// Search for relevant memories (Jaccard similarity)
+const results = ltm.search('user preferences', 5);
+console.log(results.map(r => r.entry.content));
+
+// Delete a specific entry
+ltm.delete(id);
 ```
 
 ---
@@ -253,59 +225,49 @@ Agents can subscribe to platform events to react to system-wide changes, or emit
 ### Subscribing to Events
 
 ```typescript
-import { EventBus } from '@aios/sdk';
+import { EventBus, EventTypes } from '@aios/core';
 
-// Subscribe to all tool executions
-const unsubscribe = EventBus.subscribe('agent.tool.*', (event) => {
-  console.log(`Tool ${event.payload.toolName} executed in ${event.payload.durationMs}ms`);
+const bus = new EventBus();
+
+// Subscribe to tool executions
+const sub = bus.on(EventTypes.TOOL_EXECUTED, (event) => {
+  console.log(`Tool executed:`, event.payload);
 });
 
 // Subscribe to agent lifecycle events
-EventBus.subscribe('agent.lifecycle.stopped', async (event) => {
-  console.log(`Agent ${event.source} stopped with code ${event.payload.exitCode}`);
-  // Trigger follow-up actions
+bus.on(EventTypes.AGENT_STOPPED, (event) => {
+  console.log(`Agent ${event.source} stopped`);
 });
 
 // Unsubscribe when done
-unsubscribe();
+sub.unsubscribe();
 ```
 
 ### Emitting Custom Events
 
 ```typescript
-async run(context: AgentContext) {
-  const { events, correlationId } = context;
+import { EventBus, withCorrelationId, generateCorrelationId } from '@aios/core';
 
-  await events.emit({
-    type: 'agent.output.analysis_complete',
-    payload: {
-      summary: '...',
-      confidence: 0.87,
-    },
-    correlationId,
+const bus = new EventBus();
+const correlationId = generateCorrelationId();
+
+await withCorrelationId(correlationId, async () => {
+  bus.emit({
+    type: 'agent:output',
+    payload: { summary: '...', confidence: 0.87 },
+    source: 'my-agent',
   });
-}
+  // The emitted event automatically carries `correlationId`
+});
 ```
 
-### Subscribing Inside an Agent
-
-Use the `onEvent` decorator or hook to wire event handlers to your agent class:
+### One-Time Subscriptions
 
 ```typescript
-import { BaseAgent, onEvent } from '@aios/sdk';
-
-export class WatcherAgent extends BaseAgent {
-  name = 'watcher';
-
-  @onEvent('system.health.degraded')
-  async handleDegradedHealth(event) {
-    await this.alert(`System health degraded: ${event.payload.service}`);
-  }
-
-  async run(context: AgentContext) {
-    // Main logic
-  }
-}
+// Fire once, then auto-unsubscribe
+bus.once(EventTypes.AGENT_STARTED, (event) => {
+  console.log('First agent started:', event.source);
+});
 ```
 
 ---
@@ -314,61 +276,54 @@ export class WatcherAgent extends BaseAgent {
 
 ### Registering with AgentRegistry
 
-Before an agent can be spawned, it must be registered with the `AgentRegistry`. In the monorepo, agent registrations live in `core/agents/registry.ts`:
+Before an agent can be discovered, it must be registered with an `AgentRegistry` instance:
 
 ```typescript
-// core/agents/registry.ts
-import { AgentRegistry } from '@aios/sdk';
-import { GreetingAgent } from './greeting/GreetingAgent';
-import { TradingAgent } from './trading/TradingAgent';
+import { AgentRegistry, AgentExecutor, createCodingAgent } from '@aios/core';
 
-AgentRegistry.register(GreetingAgent);
-AgentRegistry.register(TradingAgent);
+const registry = new AgentRegistry();
+const executor = new AgentExecutor();
+
+// Register a built-in template
+const codingAgent = createCodingAgent();
+registry.register(codingAgent);
+
+// Look up later
+const agent = registry.get(codingAgent.id);
+if (agent) {
+  const result = await executor.execute(agent, 'Write a fizzbuzz in Python', {
+    correlationId: 'req-789',
+  });
+  console.log(result.output);
+}
+
+// List all registered agents
+const all = registry.list();
+console.log(all.map(a => a.name));
 ```
 
 ### Registering via the API
 
-For dynamic agent registration (e.g., user-defined agents), use the REST API:
+For dynamic agent registration via REST:
 
 ```bash
-curl -X POST http://localhost:3001/agents/register \
+curl -X POST http://localhost:4000/agents \
   -H "Authorization: Bearer $AIOS_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "my-custom-agent",
     "description": "Does something useful",
     "model": "gpt-4o",
-    "tools": ["web_search"],
     "systemPrompt": "You are a helpful assistant."
   }'
 ```
 
-### Spawning Agents at Runtime
-
-```typescript
-// Spawn a new agent process
-const proc = await client.agents.spawn('my-custom-agent', {
-  userMessage: 'Research the latest AI news',
-  config: {
-    temperature: 0.5,
-  },
-});
-
-// Stream output
-for await (const chunk of proc.stream()) {
-  process.stdout.write(chunk.text);
-}
-
-// Or wait for completion
-const result = await proc.wait();
-console.log(result.output);
-```
-
-### Environment Variables for SDK
+### Environment Variables for LLM Providers
 
 | Variable | Required | Description |
 |---|---|---|
-| `AIOS_API_URL` | Yes | URL of the AiOS API server |
-| `AIOS_API_KEY` | Yes | API key for authentication |
-| `AIOS_DEFAULT_MODEL` | No | Fallback model if none specified (default: `gpt-4o-mini`) |
-| `AIOS_LOG_LEVEL` | No | SDK log verbosity (`debug`, `info`, `warn`, `error`) |
+| `OPENAI_API_KEY` | Conditional | Required when routing to OpenAI models |
+| `ANTHROPIC_API_KEY` | Conditional | Required when routing to Anthropic models |
+| `GROQ_API_KEY` | Conditional | Required when routing to Groq models |
+| `OLLAMA_BASE_URL` | No | Base URL for local Ollama server (default: `http://localhost:11434`) |
+| `SEARCH_API_KEY` | No | API key for the web search tool |

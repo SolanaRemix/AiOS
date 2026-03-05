@@ -25,7 +25,7 @@ A general-purpose conversational assistant backed by any configured LLM. This is
 **Example usage via API:**
 
 ```bash
-curl -X POST http://localhost:3001/agents/llm-agent/run \
+curl -X POST http://localhost:4000/agents/llm-agent/run \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "message": "Explain the difference between TCP and UDP" }'
@@ -61,7 +61,7 @@ Performs web research on a given topic, synthesizes information from multiple so
 **Example:**
 
 ```bash
-curl -X POST http://localhost:3001/agents/research-agent/run \
+curl -X POST http://localhost:4000/agents/research-agent/run \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -106,7 +106,7 @@ Specialized in code generation, review, debugging, and explanation. Understands 
 **Example:**
 
 ```bash
-curl -X POST http://localhost:3001/agents/coding-agent/run \
+curl -X POST http://localhost:4000/agents/coding-agent/run \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -147,7 +147,7 @@ Plans and executes multi-step workflows. Given a high-level goal, it breaks the 
 **Example:**
 
 ```bash
-curl -X POST http://localhost:3001/agents/automation-agent/run \
+curl -X POST http://localhost:4000/agents/automation-agent/run \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -186,7 +186,7 @@ Executes system commands and scripts, interprets their output, and can chain com
 **Example:**
 
 ```bash
-curl -X POST http://localhost:3001/agents/terminal-agent/run \
+curl -X POST http://localhost:4000/agents/terminal-agent/run \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -301,19 +301,19 @@ The web dashboard (`apps/web`) provides real-time monitoring:
 
 ```bash
 # Get process status
-curl http://localhost:3001/processes/proc_abc123 \
+curl http://localhost:4000/processes/proc_abc123 \
   -H "Authorization: Bearer $API_KEY"
 
 # List all active processes
-curl http://localhost:3001/processes?state=running \
+curl http://localhost:4000/processes?state=running \
   -H "Authorization: Bearer $API_KEY"
 
 # Get execution logs for a process
-curl http://localhost:3001/processes/proc_abc123/logs \
+curl http://localhost:4000/processes/proc_abc123/logs \
   -H "Authorization: Bearer $API_KEY"
 
 # Kill a running process
-curl -X DELETE http://localhost:3001/processes/proc_abc123 \
+curl -X DELETE http://localhost:4000/processes/proc_abc123 \
   -H "Authorization: Bearer $API_KEY"
 ```
 

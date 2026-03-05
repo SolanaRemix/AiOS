@@ -223,7 +223,7 @@ const networkTools = ToolRegistry.listByPermission('network:read');
 Tools can also be registered at runtime via the management API (useful for plugin systems):
 
 ```bash
-curl -X POST http://localhost:3001/tools/register \
+curl -X POST http://localhost:4000/tools/register \
   -H "Authorization: Bearer $ADMIN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -240,39 +240,40 @@ Remote tools are invoked by the platform via HTTP POST to `endpointUrl`.
 
 ## Safety and Sandboxing
 
-Tool safety is enforced at multiple layers:
+Tool safety is enforced through schema validation and input allowlisting in the current implementation:
 
 ### Input Validation
 
-Every tool call's input is validated against the tool's `inputSchema` using AJV (Another JSON Schema Validator) before the handler is invoked. Invalid input is returned as an error message to the LLM, which can then correct its call — this prevents both bugs and prompt injection attempts.
+Every tool call's input is validated against the tool's `schema` (JSON Schema format) before the handler is invoked. The `ToolRegistry.validate()` method checks required fields and types. Invalid input is returned as an error, which can be surfaced to the caller before the handler runs.
 
 ```
-LLM calls tool with args
+Tool call received with args
       ↓
-AJV schema validation
-  ✗ Invalid → error message returned to LLM (no handler invoked)
-  ✓ Valid   → handler invoked
+ToolRegistry.validate(name, args)
+  ✗ Invalid → ToolValidationError returned (no handler invoked)
+  ✓ Valid   → execute() handler invoked
 ```
 
-### Execution Isolation
+### Execution Model
 
-| Tool Category | Isolation Mechanism |
+| Tool Category | Current Isolation |
 |---|---|
-| Pure computation | In-process (no I/O, deterministic) |
-| File I/O | Chroot to `/workspace/<agentId>/` — no access outside |
-| Network (web search, HTTP) | Egress proxy with allowlist; no access to internal network ranges |
-| Code execution | gVisor container — read-only root filesystem, no network, memory limit 512 MB |
-| Shell commands | Same as code execution |
+| Pure computation (calculator, date/time) | In-process, no I/O, deterministic |
+| File I/O (fileRead, fileWrite) | Path validation — blocks traversal outside working directory |
+| Network (webSearch) | Stub — returns error unless `SEARCH_API_KEY` is set; no actual network calls in the current release |
+| Code execution | Stub — returns configuration error; sandboxed execution is a planned future feature |
+
+> **Note:** gVisor/chroot/container-level sandboxing are planned for a future release. The current implementation provides input-level safety for computation tools and path-level safety for file tools.
 
 ### Timeout Enforcement
 
-Every tool call is wrapped in a `Promise.race` against a timeout:
+Every tool call is wrapped in a `Promise.race` against a configurable timeout:
 
 ```typescript
 const result = await Promise.race([
-  tool.handler(args),
+  tool.execute(args),
   new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Tool execution timed out')), tool.timeout ?? 30000)
+    setTimeout(() => reject(new Error('Tool execution timed out')), timeoutMs)
   ),
 ]);
 ```
@@ -302,12 +303,8 @@ Global tool configuration is managed through environment variables and the `conf
 | Variable | Description |
 |---|---|
 | `TOOL_DEFAULT_TIMEOUT_MS` | Default timeout for all tools (default: `30000`) |
-| `TOOL_MAX_RETRIES` | Default auto-retry count (default: `0`) |
-| `WEB_SEARCH_API_KEY` | API key for the web search provider |
+| `SEARCH_API_KEY` | API key for the web search provider (required by `webSearchTool`) |
 | `WEB_SEARCH_PROVIDER` | Search provider: `serper`, `brave`, `serpapi` (default: `serper`) |
-| `CODE_SANDBOX_MEMORY_MB` | Memory limit for code execution sandbox (default: `512`) |
-| `CODE_SANDBOX_CPU_SHARES` | CPU shares for sandbox containers (default: `256`) |
-| `HTTP_TOOL_ALLOWED_DOMAINS` | Comma-separated domain allowlist for `http_request` tool |
 | `FILE_WORKSPACE_ROOT` | Root directory for agent file operations (default: `/tmp/aios-workspaces`) |
 
 ### Per-Tool Runtime Configuration

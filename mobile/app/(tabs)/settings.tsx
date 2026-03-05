@@ -37,7 +37,7 @@ function SectionHeader({ title }: { title: string }) {
 }
 
 export default function SettingsScreen() {
-  const [apiEndpoint, setApiEndpoint] = useState('http://localhost:3001');
+  const [apiEndpoint, setApiEndpoint] = useState('http://localhost:4000');
   const [streamResponses, setStreamResponses] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -84,7 +84,7 @@ export default function SettingsScreen() {
                 style={styles.endpointInput}
                 value={apiEndpoint}
                 onChangeText={setApiEndpoint}
-                placeholder="http://localhost:3001"
+                placeholder="http://localhost:4000"
                 placeholderTextColor="#4A4A6A"
                 autoCorrect={false}
                 autoCapitalize="none"

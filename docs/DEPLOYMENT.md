@@ -28,7 +28,7 @@ Copy `.env.example` to `.env` and populate all required values.
 | Variable | Required | Description |
 |---|---|---|
 | `NODE_ENV` | Yes | `development`, `test`, or `production` |
-| `PORT` | No | API server port (default: `3001`) |
+| `PORT` | No | API server port (default: `4000`) |
 | `WEB_PORT` | No | Web frontend port (default: `3000`) |
 
 ### Database
@@ -192,7 +192,7 @@ module.exports = {
       name: 'aios-api',
       cwd: './apps/api',
       script: 'dist/index.js',
-      env_production: { NODE_ENV: 'production', PORT: 3001 },
+      env_production: { NODE_ENV: 'production', PORT: 4000 },
     },
     {
       name: 'aios-web',
@@ -276,7 +276,7 @@ Exposes Prometheus-format metrics for scraping. Configure your Prometheus instan
 scrape_configs:
   - job_name: 'aios-api'
     static_configs:
-      - targets: ['aios-api:3001']
+      - targets: ['aios-api:4000']
     scrape_interval: 15s
 ```
 

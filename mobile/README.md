@@ -37,11 +37,13 @@ Scan the QR code shown in the terminal with the **Expo Go** app (iOS / Android) 
 
 ## Configuration
 
-The app connects to the AiOS API server. By default it targets `http://localhost:3001`. Update this in the **Settings** tab after launching the app, or set it in a `.env` file:
+The app connects to the AiOS API server. By default it targets `http://localhost:4000`. Update this in the **Settings** tab after launching the app, or set it in a `.env` file:
 
 ```bash
 EXPO_PUBLIC_API_URL=https://your-aios-server.example.com
 ```
+
+> **Note:** When running on a physical device or Android emulator, `localhost` won't reach your dev machine. Use your local IP address (e.g. `http://192.168.1.100:4000`) or the Android emulator loopback address `http://10.0.2.2:4000`.
 
 ## Project Structure
 

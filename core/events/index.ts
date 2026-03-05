@@ -6,6 +6,7 @@
  */
 
 import { randomUUID } from 'crypto';
+import { AsyncLocalStorage } from 'async_hooks';
 import { AiOSEvent, EventHandler, EventSubscription } from './types';
 
 export { AiOSEvent, EventHandler, EventSubscription } from './types';
@@ -37,26 +38,25 @@ export function generateCorrelationId(): string {
   return randomUUID();
 }
 
-/** Thread-local-style correlation ID storage (using an async-safe closure). */
-let _activeCorrelationId: string | null = null;
+/**
+ * Async-safe correlation ID storage.
+ * Uses `AsyncLocalStorage` so concurrent async operations each maintain their
+ * own correlation context without interfering with each other.
+ */
+const _correlationStorage = new AsyncLocalStorage<string>();
 
 /**
  * Execute `fn` with `id` set as the active correlation ID.
- * Any events emitted inside `fn` will inherit this ID automatically.
+ * Any events emitted inside `fn` (even across `await` boundaries) will
+ * inherit this ID automatically.  Concurrent calls are fully isolated.
  */
 export async function withCorrelationId<T>(id: string, fn: () => Promise<T>): Promise<T> {
-  const previous = _activeCorrelationId;
-  _activeCorrelationId = id;
-  try {
-    return await fn();
-  } finally {
-    _activeCorrelationId = previous;
-  }
+  return _correlationStorage.run(id, fn);
 }
 
 /** Return the currently active correlation ID (or a fresh UUID). */
 export function currentCorrelationId(): string {
-  return _activeCorrelationId ?? generateCorrelationId();
+  return _correlationStorage.getStore() ?? generateCorrelationId();
 }
 
 // ---------------------------------------------------------------------------
