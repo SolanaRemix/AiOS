@@ -2,7 +2,7 @@
   "name": "aios-platform",
   "version": "1.0.0",
   "private": true,
-  "workspaces": ["apps/*"],
+  "workspaces": ["apps/*", "core"],
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",

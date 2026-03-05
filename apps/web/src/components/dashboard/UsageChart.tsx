@@ -16,8 +16,7 @@ import {
   AreaChart,
 } from "recharts";
 interface UsageChartProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: Record<string, any>[];
+  data: Record<string, unknown>[];
   type?: "line" | "bar" | "area";
   dataKeys?: Array<{ key: string; color: string; label: string }>;
   height?: number;
