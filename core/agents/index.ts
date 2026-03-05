@@ -295,7 +295,7 @@ export function createGeneralAgent(overrides?: Partial<AgentConfig>): BaseAgent 
 export function createResearchAgent(overrides?: Partial<AgentConfig>): BaseAgent {
   const config = new AgentBuilder(overrides?.id ?? randomUUID())
     .withName(overrides?.name ?? 'Research Agent')
-    .withDescription(overrides?.description ?? 'Specialises in gathering, synthesising, and summarising information.')
+    .withDescription(overrides?.description ?? 'Specializes in gathering, synthesizing, and summarizing information.')
     .withModel(overrides?.model ?? 'gpt-4o')
     .withSystemPrompt(
       overrides?.systemPrompt ??
