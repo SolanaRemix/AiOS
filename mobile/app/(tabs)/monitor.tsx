@@ -67,7 +67,7 @@ export default function MonitorScreen() {
     uptimeHours: 47,
   });
 
-  const [services, setServices] = useState<ServiceStatus[]>([
+  const [services] = useState<ServiceStatus[]>([
     { name: 'API Server', status: 'healthy', latencyMs: 12 },
     { name: 'PostgreSQL', status: 'healthy', latencyMs: 4 },
     { name: 'Redis', status: 'healthy', latencyMs: 1 },
