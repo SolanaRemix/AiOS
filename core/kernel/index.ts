@@ -206,11 +206,14 @@ export class Kernel {
    * @param limits - Resource budget to apply.
    */
   allocateResources(agentId: string, limits: Partial<ResourceLimits>): void {
-    if (
-      limits.maxMemoryMb !== undefined &&
-      limits.maxMemoryMb <= 0
-    ) {
+    if (limits.maxMemoryMb !== undefined && limits.maxMemoryMb <= 0) {
       throw new KernelResourceError('maxMemoryMb must be positive');
+    }
+    if (limits.maxTokensPerMin !== undefined && limits.maxTokensPerMin <= 0) {
+      throw new KernelResourceError('maxTokensPerMin must be positive');
+    }
+    if (limits.maxConcurrentTools !== undefined && limits.maxConcurrentTools <= 0) {
+      throw new KernelResourceError('maxConcurrentTools must be positive');
     }
     const existing = this.resourceUsage.get(agentId) ?? {
       tokensThisMin: 0,

@@ -10,6 +10,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const APP_VERSION: string = (require('../../package.json') as { version: string }).version;
 
 interface OutputLine {
   id: string;
@@ -25,7 +27,7 @@ const BANNER = [
   ' ██║  ██║██║╚██████╔╝███████║',
   ' ╚═╝  ╚═╝╚═╝ ╚═════╝ ╚══════╝',
   '',
-  ' AiOS Terminal  v1.0.0',
+  ` AiOS Terminal  v${APP_VERSION}`,
   ' Type "help" for available commands.',
   '',
 ];

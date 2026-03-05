@@ -137,8 +137,95 @@ export class ToolRegistry {
 // ---------------------------------------------------------------------------
 
 /**
- * Safely evaluates simple arithmetic expressions.
- * Only digits, operators, parentheses, and whitespace are allowed.
+ * Recursive-descent arithmetic parser.
+ * Supports: +, -, *, /, %, ^, unary minus, parentheses, integers and decimals.
+ * No dynamic code evaluation — fully safe against injection.
+ */
+function evalArithmetic(expr: string): number {
+  let pos = 0;
+  const len = expr.length;
+
+  function skipWs(): void {
+    while (pos < len && /\s/.test(expr[pos])) pos++;
+  }
+
+  function parseExpr(): number { return parseAddSub(); }
+
+  function parseAddSub(): number {
+    let left = parseMulDiv();
+    skipWs();
+    while (pos < len && (expr[pos] === '+' || expr[pos] === '-')) {
+      const op = expr[pos++];
+      const right = parseMulDiv();
+      left = op === '+' ? left + right : left - right;
+      skipWs();
+    }
+    return left;
+  }
+
+  function parseMulDiv(): number {
+    let left = parsePower();
+    skipWs();
+    while (pos < len && (expr[pos] === '*' || expr[pos] === '/' || expr[pos] === '%')) {
+      const op = expr[pos++];
+      const right = parsePower();
+      if (op === '*') left *= right;
+      else if (op === '/') left /= right;
+      else left %= right;
+      skipWs();
+    }
+    return left;
+  }
+
+  function parsePower(): number {
+    const base = parseUnary();
+    skipWs();
+    if (pos < len && expr[pos] === '^') {
+      pos++;
+      const exp = parseUnary();
+      return Math.pow(base, exp);
+    }
+    return base;
+  }
+
+  function parseUnary(): number {
+    skipWs();
+    if (pos < len && expr[pos] === '-') { pos++; return -parseAtom(); }
+    if (pos < len && expr[pos] === '+') { pos++; return parseAtom(); }
+    return parseAtom();
+  }
+
+  function parseAtom(): number {
+    skipWs();
+    if (pos < len && expr[pos] === '(') {
+      pos++; // consume '('
+      const val = parseExpr();
+      skipWs();
+      if (pos >= len || expr[pos] !== ')') throw new Error('Missing closing parenthesis');
+      pos++; // consume ')'
+      return val;
+    }
+    // Parse number
+    const start = pos;
+    if (pos < len && /\d/.test(expr[pos])) {
+      while (pos < len && /[\d.]/.test(expr[pos])) pos++;
+      const num = parseFloat(expr.slice(start, pos));
+      if (isNaN(num)) throw new Error(`Invalid number near position ${start}`);
+      return num;
+    }
+    throw new Error(`Unexpected character '${expr[pos]}' at position ${pos}`);
+  }
+
+  skipWs();
+  const result = parseExpr();
+  skipWs();
+  if (pos < len) throw new Error(`Unexpected token '${expr[pos]}' at position ${pos}`);
+  return result;
+}
+
+/**
+ * Safely evaluates simple arithmetic expressions using a recursive descent parser.
+ * Supports +, -, *, /, %, ^ and parentheses.
  */
 export const calculatorTool: Tool = {
   name: 'calculator',
@@ -166,8 +253,7 @@ export const calculatorTool: Tool = {
     }
 
     try {
-      // eslint-disable-next-line no-new-func
-      const result = Function(`"use strict"; return (${expression})`)() as number;
+      const result = evalArithmetic(expression);
       if (!isFinite(result)) {
         return { success: false, output: null, error: 'Expression produced a non-finite result.' };
       }

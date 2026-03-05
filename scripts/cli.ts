@@ -355,6 +355,13 @@ async function cmdSystemStatus(): Promise<void> {
   }
 }
 
+/** Returns masked display value for sensitive config keys. */
+function maskSensitiveValue(key: string, value: string, fullMask = false): string {
+  const isSensitive = key.toLowerCase().includes('key') || key.toLowerCase().includes('secret');
+  if (!isSensitive) return value;
+  return fullMask ? '****' : value.slice(0, 8) + '••••••••';
+}
+
 function cmdConfigSet(args: string[]): void {
   const keyArg = args[0];
   const valArg = args[1];
@@ -367,7 +374,7 @@ function cmdConfigSet(args: string[]): void {
   const cfg = loadConfig();
   cfg[keyArg] = valArg;
   saveConfig(cfg);
-  console.log(`✓ Set ${keyArg} = ${keyArg.toLowerCase().includes('key') || keyArg.toLowerCase().includes('secret') ? '****' : valArg}`);
+  console.log(`✓ Set ${keyArg} = ${maskSensitiveValue(keyArg, valArg, true)}`);
 }
 
 function cmdConfigGet(args: string[]): void {
@@ -382,10 +389,7 @@ function cmdConfigGet(args: string[]): void {
   if (val === undefined) {
     console.log(`(not set)`);
   } else {
-    const display = keyArg.toLowerCase().includes('key') || keyArg.toLowerCase().includes('secret')
-      ? val.slice(0, 8) + '••••••••'
-      : val;
-    console.log(`${keyArg} = ${display}`);
+    console.log(`${keyArg} = ${maskSensitiveValue(keyArg, val)}`);
   }
 }
 
@@ -398,10 +402,7 @@ function cmdConfigList(): void {
   }
   console.log('Current configuration:\n');
   entries.forEach(([k, v]) => {
-    const display = k.toLowerCase().includes('key') || k.toLowerCase().includes('secret')
-      ? v.slice(0, 8) + '••••••••'
-      : v;
-    console.log(`  ${k} = ${display}`);
+    console.log(`  ${k} = ${maskSensitiveValue(k, v)}`);
   });
   console.log(`\nConfig file: ${CONFIG_PATH}`);
 }
