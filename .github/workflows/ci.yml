@@ -28,7 +28,7 @@ jobs:
         run: npm run lint --workspaces
       - name: Type Check Workspaces
         run: |
-          npm run typecheck -w core
+          npx tsc --noEmit -p core/tsconfig.json
           cd apps/api && npx tsc --noEmit
           cd apps/web && npx tsc --noEmit
 
