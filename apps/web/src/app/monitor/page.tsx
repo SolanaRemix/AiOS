@@ -155,12 +155,12 @@ export default function MonitorPage() {
           },
           {
             label: "Active Agents",
-            value: `${activeAgents}/9`,
+            value: "7/9",
             sub: "2 idle · 0 errors",
             icon: Bot,
             color: "text-pink-400",
             barColor: "bg-pink-400",
-            barValue: (activeAgents / 9) * 100,
+            barValue: (7 / 9) * 100,
             trend: "stable",
           },
           {
