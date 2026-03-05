@@ -11,16 +11,12 @@ AiOS ships with the following tools registered by default. They are available to
 | Tool Name | Category | Description |
 |---|---|---|
 | `calculator` | Computation | Evaluate arithmetic and mathematical expressions |
-| `date_time` | Utility | Get current date/time in various formats and timezones |
-| `file_read` | File I/O | Read files from the agent's working directory |
-| `file_write` | File I/O | Write or append files in the agent's working directory |
-| `web_search` | Network | Search the web and return ranked results |
-| `url_fetch` | Network | Fetch and extract text content from a URL |
-| `code_interpreter` | Execution | Execute Python or JavaScript code in an isolated sandbox |
-| `shell_exec` | Execution | Run shell commands in a sandboxed environment |
-| `http_request` | Network | Make arbitrary HTTP requests to external APIs |
-| `text_summarizer` | NLP | Summarize long text using an LLM |
-| `json_transform` | Utility | Apply JSONPath or jq-like transformations to JSON data |
+| `dateTime` | Utility | Get current date/time in various formats and timezones |
+| `fileRead` | File I/O | Read files from the agent's working directory |
+| `fileWrite` | File I/O | Write or append files in the agent's working directory |
+| `webSearch` | Network | Search the web and return ranked results |
+| `urlFetch` | Network | Fetch and extract text content from a URL |
+| `codeExecution` | Execution | Execute code in a sandboxed environment |
 
 ---
 
@@ -75,7 +71,7 @@ interface ToolDefinition {
 
 ```json
 {
-  "name": "web_search",
+  "name": "webSearch",
   "description": "Search the web for current information. Returns up to 10 ranked results with title, URL, and snippet.",
   "inputSchema": {
     "type": "object",
@@ -106,12 +102,12 @@ interface ToolDefinition {
 
 ```typescript
 // tools/weather/index.ts
-import { defineTool } from '@aios/sdk';
+import { Tool } from '@aios/core';
 
-export const weatherTool = defineTool({
+export const weatherTool: Tool = {
   name: 'get_weather',
   description: 'Get the current weather for a city. Returns temperature, conditions, humidity, and wind speed.',
-  inputSchema: {
+  schema: {
     type: 'object',
     properties: {
       city: {
@@ -121,45 +117,26 @@ export const weatherTool = defineTool({
       units: {
         type: 'string',
         enum: ['celsius', 'fahrenheit'],
-        default: 'celsius',
-        description: 'Temperature units',
+        description: 'Temperature units (default: celsius)',
       },
     },
     required: ['city'],
     additionalProperties: false,
   },
-  outputSchema: {
-    type: 'object',
-    properties: {
-      city: { type: 'string' },
-      temperature: { type: 'number' },
-      units: { type: 'string' },
-      conditions: { type: 'string' },
-      humidity: { type: 'number' },
-      windSpeedKph: { type: 'number' },
-    },
-  },
-  permissions: ['network:read'],
-  timeout: 10000,
-  async handler({ city, units = 'celsius' }) {
+  async execute(args) {
+    const city = args['city'] as string;
+    const units = (args['units'] as string) ?? 'celsius';
     const apiKey = process.env.WEATHER_API_KEY;
     const response = await fetch(
       `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${encodeURIComponent(city)}`
     );
     if (!response.ok) {
-      throw new Error(`Weather API error: ${response.status}`);
+      return { success: false, output: `Weather API error: ${response.status}` };
     }
-    const data = await response.json();
-    return {
-      city: data.location.name,
-      temperature: units === 'celsius' ? data.current.temp_c : data.current.temp_f,
-      units,
-      conditions: data.current.condition.text,
-      humidity: data.current.humidity,
-      windSpeedKph: data.current.wind_kph,
-    };
+    const data = await response.json() as Record<string, Record<string, unknown>>;
+    return { success: true, output: { city, temperature: units === 'celsius' ? data['current']['temp_c'] : data['current']['temp_f'], units } };
   },
-});
+};
 ```
 
 ### Step 2: Register the Tool
@@ -167,20 +144,24 @@ export const weatherTool = defineTool({
 Register your tool once at application startup, before any agents are spawned:
 
 ```typescript
-// core/tools/registry.ts  (or your app's entry point)
-import { ToolRegistry } from '@aios/sdk';
+// app entry point or startup file
+import { ToolRegistry } from '@aios/core';
 import { weatherTool } from './weather';
 
-ToolRegistry.register(weatherTool);
+const registry = new ToolRegistry();
+registry.register(weatherTool);
 ```
 
 ### Step 3: Bind to an Agent
 
 ```typescript
-const weatherAgent = AgentBuilder.create('weather-assistant')
-  .model('gpt-4o-mini')
-  .tools(['get_weather', 'date_time'])
-  .systemPrompt('You are a weather assistant. Always provide temperatures in both Celsius and Fahrenheit.')
+import { AgentBuilder } from '@aios/core';
+
+const weatherAgent = new AgentBuilder('weather-assistant')
+  .withName('Weather Assistant')
+  .withModel('gpt-4o-mini')
+  .withTools(['get_weather', 'dateTime'])
+  .withSystemPrompt('You are a weather assistant. Always provide temperatures in both Celsius and Fahrenheit.')
   .build();
 ```
 
@@ -188,34 +169,30 @@ const weatherAgent = AgentBuilder.create('weather-assistant')
 
 ## Tool Registry
 
-The `ToolRegistry` is a singleton that manages all available tools at runtime.
+The `ToolRegistry` is instantiated and manages all available tools at runtime.
 
 ### Registration
 
 ```typescript
-import { ToolRegistry } from '@aios/sdk';
+import { ToolRegistry } from '@aios/core';
+
+const registry = new ToolRegistry();
 
 // Register a single tool
-ToolRegistry.register(myTool);
-
-// Register multiple tools at once
-ToolRegistry.registerAll([tool1, tool2, tool3]);
+registry.register(myTool);
 
 // Check if a tool is registered
-ToolRegistry.has('get_weather'); // true | false
+registry.get('get_weather') !== undefined; // true | false
 ```
 
 ### Discovery
 
 ```typescript
 // Get all registered tools
-const allTools = ToolRegistry.list();
+const allTools = registry.list();
 
 // Get a specific tool definition
-const tool = ToolRegistry.get('web_search');
-
-// Get tools by permission category
-const networkTools = ToolRegistry.listByPermission('network:read');
+const tool = registry.get('webSearch');
 ```
 
 ### Dynamic Registration via API
@@ -309,16 +286,8 @@ Global tool configuration is managed through environment variables and the `conf
 
 ### Per-Tool Runtime Configuration
 
-Individual tool behavior can be overridden when registering:
+Individual tools can be registered with standard metadata. Per-tool runtime configuration (timeouts, rate limits, caching) is planned for a future release:
 
 ```typescript
-ToolRegistry.register(webSearchTool, {
-  timeout: 15000,          // override default timeout
-  retries: 2,              // retry twice on network errors
-  cacheTtl: 300,           // cache results for 5 minutes
-  rateLimit: {
-    requests: 100,
-    windowMs: 60000,       // 100 requests per minute
-  },
-});
+registry.register(webSearchTool);
 ```

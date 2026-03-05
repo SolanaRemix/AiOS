@@ -85,18 +85,18 @@ const result = await executor.execute(agent, 'Hello!', {
 `AgentBuilder` provides a fluent API to configure agents without subclassing, useful for quickly composing agents from existing building blocks:
 
 ```typescript
-import { AgentBuilder } from '@aios/core';
+import { AgentBuilder, AgentRegistry } from '@aios/core';
 
-const researchAgent = new AgentBuilder()
-  .name('quick-researcher')
-  .description('Researches a topic and returns a summary')
-  .model('claude-3-5-sonnet-20241022')
-  .maxTokens(2048)
-  .systemPrompt(`You are a research assistant. When given a topic:
+const researchAgent = new AgentBuilder('quick-researcher')
+  .withName('Quick Researcher')
+  .withDescription('Researches a topic and returns a summary')
+  .withModel('claude-3-5-sonnet-20241022')
+  .withMaxTokens(2048)
+  .withSystemPrompt(`You are a research assistant. When given a topic:
 1. Break it into key subtopics
 2. Summarize current knowledge on each
 3. Cite sources where possible`)
-  .tools([/* tool instances from ToolRegistry */])
+  .withTools(['webSearch', 'urlFetch'])
   .build();
 
 const registry = new AgentRegistry();
@@ -107,15 +107,13 @@ registry.register(researchAgent);
 
 | Method | Type | Description |
 |---|---|---|
-| `.model(name)` | `string` | LLM model identifier |
-| `.temperature(t)` | `0.0–2.0` | Sampling temperature |
-| `.maxTokens(n)` | `number` | Max output tokens |
-| `.systemPrompt(text)` | `string` | System instruction prepended to every conversation |
-| `.tools(names[])` | `string[]` | Names of tools to bind (must be registered in ToolRegistry) |
-| `.memory(opts)` | `MemoryOptions` | Configure short-term and long-term memory |
-| `.onStart(fn)` | `lifecycle hook` | Called when agent process starts |
-| `.onStop(fn)` | `lifecycle hook` | Called when agent process stops |
-| `.onError(fn)` | `error hook` | Called on unhandled errors |
+| `withName(name)` | `string` | Human-readable agent name |
+| `withDescription(text)` | `string` | Purpose description |
+| `withModel(name)` | `string` | LLM model identifier |
+| `withMaxTokens(n)` | `number` | Max output tokens |
+| `withSystemPrompt(text)` | `string` | System instruction prepended to every conversation |
+| `withTools(names[])` | `string[]` | Names of tools to bind (must be registered in ToolRegistry) |
+| `withMemory(opts)` | `Partial<MemoryOptions>` | Configure short-term and long-term memory |
 
 ---
 
@@ -126,15 +124,12 @@ Agents can only execute tools that are explicitly bound to them. This is both a 
 ### Binding Built-In Tools
 
 ```typescript
-import { AgentBuilder, calculatorTool, dateTimeTool, webSearchTool } from '@aios/core';
+import { AgentBuilder } from '@aios/core';
 
-const agent = new AgentBuilder()
-  .name('analyst')
-  .tools([
-    calculatorTool,    // arithmetic
-    dateTimeTool,      // current date/time
-    webSearchTool,     // internet search (requires SEARCH_API_KEY)
-  ])
+const agent = new AgentBuilder('analyst')
+  .withName('Analyst')
+  .withTools(['calculator', 'dateTime', 'webSearch'])
+  .withModel('gpt-4o-mini')
   .build();
 ```
 
@@ -163,9 +158,10 @@ const stockPriceTool: Tool = {
 const registry = new ToolRegistry();
 registry.register(stockPriceTool);
 
-const tradingAgent = new AgentBuilder()
-  .name('trading-analyst')
-  .tools([stockPriceTool, calculatorTool])
+const tradingAgent = new AgentBuilder('trading-analyst')
+  .withName('Trading Analyst')
+  .withTools(['get_stock_price', 'calculator'])
+  .withModel('gpt-4o-mini')
   .build();
 ```
 
@@ -188,12 +184,12 @@ const memory = new MemoryManager();
 memory.addMessage('agent-1', { role: 'user', content: 'Hello!' });
 memory.addMessage('agent-1', { role: 'assistant', content: 'Hi there!' });
 
-// Retrieve context (combined short and long-term) 
-const context = memory.getContext('agent-1');
-console.log(context.shortTerm); // recent messages
+// Retrieve recent messages (returns Message[])
+const messages = memory.getContext('agent-1');
+console.log(messages); // [{ role: 'user', content: 'Hello!', timestamp: '...' }, ...]
 
 // Clear short-term memory
-memory.shortTerm('agent-1').clear();
+memory.clearShortTerm('agent-1');
 ```
 
 ### Long-Term Memory

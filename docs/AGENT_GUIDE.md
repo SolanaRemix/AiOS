@@ -34,11 +34,18 @@ curl -X POST http://localhost:4000/agents/llm-agent/run \
 **Example usage via SDK:**
 
 ```typescript
-const proc = await client.agents.spawn('llm-agent', {
-  userMessage: 'Write a haiku about distributed systems',
-  config: { model: 'claude-3-5-sonnet-20241022', temperature: 0.8 },
-});
-console.log(await proc.wait());
+import { AgentRegistry, AgentExecutor } from '@aios/core';
+
+const registry = new AgentRegistry();
+const executor = new AgentExecutor();
+
+const agent = registry.get('llm-agent');
+if (agent) {
+  const result = await executor.execute(agent, 'Write a haiku about distributed systems', {
+    correlationId: 'my-request-id',
+  });
+  console.log(result);
+}
 ```
 
 ---
@@ -56,7 +63,7 @@ Performs web research on a given topic, synthesizes information from multiple so
 - Structured output: summary, key findings, citations
 - Configurable depth (quick vs. deep research)
 
-**Tools used:** `web_search`, `url_fetch`, `text_summarizer`
+**Tools used:** `webSearch`, `urlFetch`
 
 **Example:**
 
@@ -101,7 +108,7 @@ Specialized in code generation, review, debugging, and explanation. Understands 
 - Explanation of existing code
 - Test generation
 
-**Tools used:** `code_interpreter`, `file_read`, `web_search` (for documentation lookup)
+**Tools used:** `codeExecution`, `fileRead`, `webSearch` (for documentation lookup)
 
 **Example:**
 
@@ -118,13 +125,16 @@ curl -X POST http://localhost:4000/agents/coding-agent/run \
 **Debugging workflow:**
 
 ```typescript
-const proc = await client.agents.spawn('coding-agent', {
-  userMessage: 'Debug this function: ' + buggyCode,
-  config: {
-    mode: 'debug',    // 'generate' | 'debug' | 'review' | 'explain'
-    language: 'python',
-  },
-});
+import { AgentRegistry, AgentExecutor } from '@aios/core';
+
+const registry = new AgentRegistry();
+const executor = new AgentExecutor();
+
+const agent = registry.get('coding-agent');
+if (agent) {
+  const result = await executor.execute(agent, 'Debug this function: ' + buggyCode);
+  console.log(result);
+}
 ```
 
 ---
@@ -142,7 +152,7 @@ Plans and executes multi-step workflows. Given a high-level goal, it breaks the 
 - Integration with external APIs via HTTP tool
 - Retry and error recovery logic
 
-**Tools used:** `web_search`, `http_request`, `calculator`, `date_time`, `file_write`
+**Tools used:** `webSearch`, `calculator`, `dateTime`, `fileWrite`
 
 **Example:**
 
@@ -181,7 +191,7 @@ Executes system commands and scripts, interprets their output, and can chain com
 - Process management (within sandbox)
 - Script generation and execution
 
-**Tools used:** `shell_exec`, `file_read`, `file_write`
+**Tools used:** `codeExecution`, `fileRead`, `fileWrite`
 
 **Example:**
 
@@ -280,8 +290,8 @@ Accept: text/event-stream
 ```
 data: {"type":"text","content":"The history of "}
 data: {"type":"text","content":"Unix begins in "}
-data: {"type":"tool_call","toolName":"web_search","args":{"query":"Unix history"}}
-data: {"type":"tool_result","toolName":"web_search","summary":"..."}
+data: {"type":"tool_call","toolName":"webSearch","args":{"query":"Unix history"}}
+data: {"type":"tool_result","toolName":"webSearch","summary":"..."}
 data: {"type":"done","exitCode":0}
 ```
 

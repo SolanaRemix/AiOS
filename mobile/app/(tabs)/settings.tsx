@@ -162,7 +162,7 @@ export default function SettingsScreen() {
           </SettingRow>
           <View style={styles.rowDivider} />
           <SettingRow label="SDK">
-            <Text style={styles.infoText}>@aios/sdk v{APP_VERSION}</Text>
+            <Text style={styles.infoText}>@aios/core v{APP_VERSION}</Text>
           </SettingRow>
         </View>
 

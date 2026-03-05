@@ -43,55 +43,56 @@ const SDK_LINKS = [
 ];
 
 const CODE_EXAMPLES: Record<string, string> = {
-  "Create Agent": `import { AiOSClient } from '@aios/sdk';
+  "Create Agent": `import { AgentBuilder, AgentRegistry } from '@aios/core';
 
-const client = new AiOSClient({
-  apiKey: process.env.AIOS_API_KEY,
-  baseUrl: 'https://api.aios.dev/v1',
-});
+const registry = new AgentRegistry();
 
-const agent = await client.agents.create({
-  name: 'My Assistant',
-  model: 'gpt-4o',
-  systemPrompt: 'You are a helpful assistant.',
-  tools: ['web_search', 'calculator'],
-});
+const agent = new AgentBuilder('my-assistant')
+  .withName('My Assistant')
+  .withModel('gpt-4o')
+  .withSystemPrompt('You are a helpful assistant.')
+  .withTools(['webSearch', 'calculator'])
+  .build();
 
-console.log('Agent created:', agent.id);`,
+registry.register(agent);
+console.log('Agent registered:', agent.config.id);`,
 
-  "Run Task": `const result = await client.agents.run(agentId, {
-  task: 'Summarize the latest AI research papers',
-  stream: true,
-});
+  "Run Task": `import { AgentRegistry, AgentExecutor } from '@aios/core';
 
-for await (const chunk of result) {
-  process.stdout.write(chunk.content);
+const registry = new AgentRegistry();
+const executor = new AgentExecutor();
+
+const agent = registry.get('my-assistant');
+if (agent) {
+  const result = await executor.execute(
+    agent,
+    'Summarize the latest AI research papers',
+    { correlationId: crypto.randomUUID() },
+  );
+  console.log(result);
 }`,
 
-  "Search Memory": `const memories = await client.memory.search({
-  query: 'project requirements',
-  limit: 10,
-  threshold: 0.75,
+  "Search Memory": `import { LongTermMemory } from '@aios/core';
+
+const ltm = new LongTermMemory();
+
+// Search for relevant memories (Jaccard similarity)
+const results = ltm.search('project requirements', 10);
+results.forEach(r => console.log(r.entry.content));`,
+
+  "Webhook Setup": `// Listen to platform events via EventBus
+import { EventBus } from '@aios/core';
+
+const bus = new EventBus();
+
+// Subscribe to agent completion events
+bus.on('agent:complete', (event) => {
+  console.log('Agent completed:', event.payload);
 });
 
-memories.forEach(m => console.log(m.content));`,
-
-  "Webhook Setup": `// Register a webhook endpoint
-const webhook = await client.webhooks.create({
-  url: 'https://your-app.com/webhooks/aios',
-  events: ['agent.task.completed', 'agent.error'],
-  secret: process.env.WEBHOOK_SECRET,
-});
-
-// Verify incoming webhooks
-app.post('/webhooks/aios', (req, res) => {
-  const sig = req.headers['x-aios-signature'];
-  if (!client.webhooks.verify(req.body, sig)) {
-    return res.status(401).send('Invalid signature');
-  }
-  const event = req.body;
-  console.log('Event:', event.type, event.data);
-  res.json({ received: true });
+// Subscribe to agent error events
+bus.on('agent:error', (event) => {
+  console.error('Agent error:', event.payload);
 });`,
 };
 

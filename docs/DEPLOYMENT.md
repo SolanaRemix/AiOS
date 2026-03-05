@@ -69,8 +69,7 @@ Copy `.env.example` to `.env` and populate all required values.
 
 | Variable | Required | Description |
 |---|---|---|
-| `WEB_SEARCH_API_KEY` | Conditional | Required for the `web_search` tool |
-| `WEB_SEARCH_PROVIDER` | No | Search provider: `serper`, `brave`, `serpapi` |
+| `SEARCH_API_KEY` | Conditional | Required for the `webSearch` tool |
 | `FILE_WORKSPACE_ROOT` | No | Directory for agent file I/O (default: `/tmp/aios-workspaces`) |
 
 ---

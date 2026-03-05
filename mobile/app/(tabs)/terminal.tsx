@@ -45,12 +45,12 @@ const COMMANDS: Record<string, () => string[]> = {
   version: () => [
     'AiOS Platform v1.0.0',
     'Runtime: Node.js 20.x',
-    'SDK: @aios/sdk v1.0.0',
+    'SDK: @aios/core v1.0.0',
     'Build: production',
   ],
   status: () => [
     'System Status:',
-    '  API Server    [●] Running  (port 3001)',
+    '  API Server    [●] Running  (port 4000)',
     '  PostgreSQL    [●] Running  (connected)',
     '  Redis         [●] Running  (connected)',
     '  LLM Router    [●] Running',
