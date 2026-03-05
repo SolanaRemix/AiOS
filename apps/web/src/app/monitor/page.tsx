@@ -75,7 +75,6 @@ export default function MonitorPage() {
   const [cpuUsage, setCpuUsage] = useState(42);
   const [memUsage, setMemUsage] = useState(68);
   const [reqPerMin, setReqPerMin] = useState(1847);
-  const [activeAgents, setActiveAgents] = useState(7);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
 
