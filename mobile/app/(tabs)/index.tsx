@@ -49,7 +49,7 @@ const STATUS_COLORS = {
 export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<StatCard[]>(MOCK_STATS);
-  const [activity, setActivity] = useState<ActivityItem[]>(MOCK_ACTIVITY);
+  const [activity] = useState<ActivityItem[]>(MOCK_ACTIVITY);
 
   const onRefresh = async () => {
     setRefreshing(true);
