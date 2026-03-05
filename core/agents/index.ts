@@ -164,8 +164,6 @@ export class ModelRouter {
  * Executes a {@link BaseAgent} with lifecycle management and error handling.
  */
 export class AgentExecutor {
-  private readonly router = new ModelRouter();
-
   /**
    * Execute an agent with the given input and context.
    *
