@@ -105,7 +105,7 @@ export default function HealthPage() {
 
         <div className="bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.08)] rounded-xl p-4">
           <h2 className="text-[rgba(255,255,255,0.6)] text-xs tracking-wider mb-4 flex items-center gap-2">
-            <Clock size={12} /> UPTIME &amp; THRESHOLDS
+            <Clock size={12} /> UPTIME & THRESHOLDS
           </h2>
           <div className="space-y-3">
             <div className="flex items-center justify-between py-2 border-b border-[rgba(255,255,255,0.05)]">
