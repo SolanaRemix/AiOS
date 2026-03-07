@@ -1,7 +1,7 @@
 'use client';
 
 import { mockSystemMetrics, generateMetricsHistory } from '@/lib/mock-data';
-import { Activity, Cpu, Brain, Zap, Server, Clock } from 'lucide-react';
+import { Cpu, Brain, Zap, Server, Clock } from 'lucide-react';
 import { formatUptime, formatNumber } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadialBarChart, RadialBar } from 'recharts';
 import { useMemo } from 'react';

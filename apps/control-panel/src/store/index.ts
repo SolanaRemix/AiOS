@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Agent, Swarm, Task, SecurityEvent, SystemMetrics, AutonomyMode } from '@/types';
+import { Agent, Swarm, Task, SecurityEvent, SystemMetrics, AutonomyMode, WebSocketEvent } from '@/types';
 import { mockAgents, mockSwarms, mockTasks, mockSecurityEvents, mockSystemMetrics } from '@/lib/mock-data';
 
 interface ControlPanelStore {
@@ -10,6 +10,11 @@ interface ControlPanelStore {
   metrics: SystemMetrics;
   autonomyMode: AutonomyMode;
   killSwitchActive: boolean;
+  // Shared event bus — one stream, many consumers
+  connected: boolean;
+  events: WebSocketEvent[];
+  setConnected: (connected: boolean) => void;
+  addEvent: (event: WebSocketEvent) => void;
   setAutonomyMode: (mode: AutonomyMode) => void;
   activateKillSwitch: () => void;
   deactivateKillSwitch: () => void;
@@ -25,6 +30,10 @@ export const useControlPanelStore = create<ControlPanelStore>((set) => ({
   metrics: mockSystemMetrics,
   autonomyMode: 'assisted',
   killSwitchActive: false,
+  connected: false,
+  events: [],
+  setConnected: (connected) => set({ connected }),
+  addEvent: (event) => set(state => ({ events: [event, ...state.events].slice(0, 100) })),
   setAutonomyMode: (mode) => set({ autonomyMode: mode }),
   activateKillSwitch: () => set({ killSwitchActive: true, autonomyMode: 'manual' }),
   deactivateKillSwitch: () => set({ killSwitchActive: false }),

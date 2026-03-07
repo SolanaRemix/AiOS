@@ -83,7 +83,7 @@ export default function DashboardPage() {
           <h2 className="text-[rgba(255,255,255,0.6)] text-xs tracking-wider mb-4">LIVE EVENTS</h2>
           <div className="space-y-2 overflow-y-auto max-h-48">
             {events.slice(0, 10).map((event, i) => (
-              <div key={i} className="flex items-start gap-2 text-xs py-1 border-b border-[rgba(255,255,255,0.05)]">
+              <div key={`${event.type}-${event.timestamp}-${i}`} className="flex items-start gap-2 text-xs py-1 border-b border-[rgba(255,255,255,0.05)]">
                 <div className="w-1.5 h-1.5 rounded-full bg-[#00f5ff] mt-1 flex-shrink-0" />
                 <div>
                   <span className="text-[#00f5ff]">{event.type.replace(/_/g, ' ').toUpperCase()}</span>

@@ -1,11 +1,12 @@
 'use client';
 
 import { Bell, Wifi, WifiOff, Activity } from 'lucide-react';
-import { useMockWebSocket } from '@/hooks/useWebSocket';
-import { mockSystemMetrics } from '@/lib/mock-data';
+import { useControlPanelStore } from '@/store';
 
 export function TopBar() {
-  const { connected, events } = useMockWebSocket();
+  const connected = useControlPanelStore(state => state.connected);
+  const events = useControlPanelStore(state => state.events);
+  const metrics = useControlPanelStore(state => state.metrics);
   const recentAlerts = events.filter(e => e.type === 'system_alert' || e.type === 'security_event').length;
 
   return (
@@ -13,11 +14,11 @@ export function TopBar() {
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 text-xs text-[rgba(255,255,255,0.5)]">
           <Activity size={14} className="text-[#00f5ff]" />
-          <span>CPU: <span className="text-[#00f5ff]">{mockSystemMetrics.cpu_usage}%</span></span>
+          <span>CPU: <span className="text-[#00f5ff]">{metrics.cpu_usage}%</span></span>
           <span className="text-[rgba(255,255,255,0.2)]">|</span>
-          <span>MEM: <span className="text-[#7c3aed]">{mockSystemMetrics.memory_usage}%</span></span>
+          <span>MEM: <span className="text-[#7c3aed]">{metrics.memory_usage}%</span></span>
           <span className="text-[rgba(255,255,255,0.2)]">|</span>
-          <span>GPU: <span className="text-[#00ff88]">{mockSystemMetrics.gpu_usage}%</span></span>
+          <span>GPU: <span className="text-[#00ff88]">{metrics.gpu_usage}%</span></span>
         </div>
       </div>
       <div className="flex items-center gap-4">
