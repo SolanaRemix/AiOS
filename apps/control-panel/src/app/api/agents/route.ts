@@ -18,10 +18,20 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   // Mock implementation: apply the requested updates to a mock agent.
-  const body = await request.json().catch(() => ({}));
+  // Prefer ID from query params (for CLI compatibility), then JSON body (id or agent_id),
+  // and finally fall back to a mock ID.
+  const searchParams = request.nextUrl?.searchParams;
+  const idFromQuery = searchParams ? searchParams.get('id') ?? undefined : undefined;
+
+  const body = await request.json().catch(() => ({} as { id?: string; agent_id?: string }));
+  const idFromBody = (body as { id?: string }).id;
+  const agentIdFromBody = (body as { agent_id?: string }).agent_id;
+
+  const resolvedId = idFromQuery ?? idFromBody ?? agentIdFromBody ?? 'mock-updated-id';
+
   const updatedAgent = {
-    id: body.id ?? 'mock-updated-id',
     ...body,
+    id: resolvedId,
   };
 
   return NextResponse.json({ agent: updatedAgent }, { status: 200 });
