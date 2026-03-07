@@ -3,7 +3,7 @@
  * AiOS CLI — Command-line interface for the SWARM GOD CONTROL PANEL
  *
  * Usage:
- *   npx ts-node apps/control-panel/cli/aios.ts <command> [options]
+ *   node dist/apps/control-panel/cli/aios.js <command> [options]
  *
  * Commands:
  *   swarm list              List all active swarms
