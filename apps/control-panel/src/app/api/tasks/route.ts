@@ -43,14 +43,21 @@ export async function PATCH(request: Request) {
     // Ignore body parsing errors for mocked handler
   }
 
-  return NextResponse.json(
-    {
-      action: 'retry',
-      status: 'mocked',
-      requestBody: body,
-    },
-    { status: 200 }
-  );
+  const url = new URL(request.url);
+  const taskId =
+    url.searchParams.get('task_id') ?? url.searchParams.get('id');
+
+  const responsePayload: Record<string, unknown> = {
+    action: 'retry',
+    status: 'mocked',
+    requestBody: body,
+  };
+
+  if (taskId !== null) {
+    responsePayload.task_id = taskId;
+  }
+
+  return NextResponse.json(responsePayload, { status: 200 });
 }
 
 export async function DELETE(request: Request) {
