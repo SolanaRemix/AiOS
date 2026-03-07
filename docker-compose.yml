@@ -105,6 +105,31 @@ services:
     networks:
       - aios_net
 
+  # ─── Control Panel ──────────────────────────────────────────────────────────
+  control-panel:
+    build:
+      context: .
+      dockerfile: Dockerfile.control-panel
+    container_name: aios_control_panel
+    <<: [*restart, *logging]
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://api:4000
+      API_URL: http://api:4000
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - aios_net
+
   # ─── Nginx ──────────────────────────────────────────────────────────────────
   nginx:
     image: nginx:alpine

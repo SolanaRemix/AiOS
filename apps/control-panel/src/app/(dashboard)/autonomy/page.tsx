@@ -171,10 +171,10 @@ export default function AutonomyPage() {
             </tr>
           </thead>
           <tbody>
-            {mockAgents.map(agent => {
+            {(() => {
               const trustColors: Record<string, string> = { active: '#00ff88', error: '#ef4444', paused: '#f0abfc', idle: '#00f5ff', terminated: '#6b7280' };
               const trustLabels: Record<string, string> = { active: 'HIGH', error: 'SUSPENDED', paused: 'MEDIUM', idle: 'STANDARD', terminated: 'NONE' };
-              return (
+              return mockAgents.map(agent => (
                 <tr key={agent.agent_id} className="border-b border-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.02)]">
                   <td className="py-2 font-medium text-white">{agent.name}</td>
                   <td className="py-2 text-[rgba(255,255,255,0.5)]">{agent.role}</td>
@@ -191,8 +191,8 @@ export default function AutonomyPage() {
                     <span style={{ color: trustColors[agent.status] }}>{trustLabels[agent.status]}</span>
                   </td>
                 </tr>
-              );
-            })}
+              ));
+            })()}
           </tbody>
         </table>
       </div>
