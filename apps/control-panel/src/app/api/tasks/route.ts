@@ -14,13 +14,23 @@ export async function POST(request: Request) {
     // Ignore body parsing errors for mocked handler
   }
 
+  const task =
+    body && typeof body === 'object'
+      ? {
+          task_id: 'mocked-task-id',
+          status: 'mocked',
+          ...(body as Record<string, unknown>),
+        }
+      : {
+          task_id: 'mocked-task-id',
+          status: 'mocked',
+        };
+
   return NextResponse.json(
     {
-      action: 'run',
-      status: 'mocked',
-      requestBody: body,
+      task,
     },
-    { status: 200 }
+    { status: 201 }
   );
 }
 
