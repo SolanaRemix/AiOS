@@ -69,11 +69,26 @@ export async function DELETE(request: Request) {
     // Ignore body parsing errors for mocked handler
   }
 
+  const url = new URL(request.url);
+  const searchParams = url.searchParams;
+  const queryTaskId = searchParams.get('task_id') ?? searchParams.get('id');
+
+  // Attempt to resolve a task identifier from query params or body
+  const bodyTaskId =
+    typeof body === 'object' && body !== null
+      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ((body as any).task_id ?? (body as any).id ?? null)
+      : null;
+
+  const taskId = queryTaskId ?? bodyTaskId ?? null;
+
   return NextResponse.json(
     {
       action: 'cancel',
       status: 'mocked',
       requestBody: body,
+      success: true,
+      task_id: taskId,
     },
     { status: 200 }
   );
