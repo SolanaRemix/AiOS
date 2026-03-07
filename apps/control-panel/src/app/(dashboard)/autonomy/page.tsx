@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { mockAgents } from '@/lib/mock-data';
 import { useControlPanelStore } from '@/store';
 import { Zap, AlertTriangle, Shield, ToggleLeft, ToggleRight } from 'lucide-react';
 import { AutonomyMode } from '@/types';
@@ -21,7 +20,12 @@ const modeColors: Record<AutonomyMode, string> = {
 };
 
 export default function AutonomyPage() {
-  const { autonomyMode, setAutonomyMode, killSwitchActive, activateKillSwitch, deactivateKillSwitch } = useControlPanelStore();
+  const autonomyMode = useControlPanelStore(s => s.autonomyMode);
+  const setAutonomyMode = useControlPanelStore(s => s.setAutonomyMode);
+  const killSwitchActive = useControlPanelStore(s => s.killSwitchActive);
+  const activateKillSwitch = useControlPanelStore(s => s.activateKillSwitch);
+  const deactivateKillSwitch = useControlPanelStore(s => s.deactivateKillSwitch);
+  const agents = useControlPanelStore(s => s.agents);
   const [killConfirm, setKillConfirm] = useState(false);
   const [toggles, setToggles] = useState({
     require_tool_approval: true,
@@ -174,7 +178,7 @@ export default function AutonomyPage() {
             {(() => {
               const trustColors: Record<string, string> = { active: '#00ff88', error: '#ef4444', paused: '#f0abfc', idle: '#00f5ff', terminated: '#6b7280' };
               const trustLabels: Record<string, string> = { active: 'HIGH', error: 'SUSPENDED', paused: 'MEDIUM', idle: 'STANDARD', terminated: 'NONE' };
-              return mockAgents.map(agent => (
+              return agents.map(agent => (
                 <tr key={agent.agent_id} className="border-b border-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.02)]">
                   <td className="py-2 font-medium text-white">{agent.name}</td>
                   <td className="py-2 text-[rgba(255,255,255,0.5)]">{agent.role}</td>

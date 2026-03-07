@@ -1,7 +1,8 @@
 'use client';
 
 import { useMockWebSocket } from '@/hooks/useWebSocket';
-import { mockAgents, mockSwarms, mockTasks, mockSystemMetrics, generateMetricsHistory } from '@/lib/mock-data';
+import { useControlPanelStore } from '@/store';
+import { generateMetricsHistory } from '@/lib/mock-data';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Bot, Network, ListTodo, Zap } from 'lucide-react';
 import { formatNumber, formatUptime, timeAgo } from '@/lib/utils';
@@ -9,18 +10,22 @@ import { useMemo } from 'react';
 
 export default function DashboardPage() {
   const { connected, events } = useMockWebSocket();
+  const agents = useControlPanelStore(s => s.agents);
+  const swarms = useControlPanelStore(s => s.swarms);
+  const tasks = useControlPanelStore(s => s.tasks);
+  const metrics = useControlPanelStore(s => s.metrics);
   const metricsHistory = useMemo(() => generateMetricsHistory(20), []);
 
-  const activeAgents = mockAgents.filter(a => a.status === 'active').length;
-  const activeSwarms = mockSwarms.filter(s => s.status === 'active').length;
-  const runningTasks = mockTasks.filter(t => t.status === 'running').length;
-  const totalTokens = mockAgents.reduce((sum, a) => sum + a.token_usage, 0);
+  const activeAgents = agents.filter(a => a.status === 'active').length;
+  const activeSwarms = swarms.filter(s => s.status === 'active').length;
+  const runningTasks = tasks.filter(t => t.status === 'running').length;
+  const totalTokens = agents.reduce((sum, a) => sum + a.token_usage, 0);
 
   const stats = [
-    { label: 'Total Agents', value: mockAgents.length, sub: `${activeAgents} active`, icon: Bot, color: '#00f5ff' },
-    { label: 'Active Swarms', value: activeSwarms, sub: `${mockSwarms.length} total`, icon: Network, color: '#7c3aed' },
-    { label: 'Running Tasks', value: runningTasks, sub: `${mockTasks.length} total`, icon: ListTodo, color: '#00ff88' },
-    { label: 'Tokens Used', value: formatNumber(totalTokens), sub: `${formatNumber(mockSystemMetrics.token_usage_per_min)}/min`, icon: Zap, color: '#f0abfc' },
+    { label: 'Total Agents', value: agents.length, sub: `${activeAgents} active`, icon: Bot, color: '#00f5ff' },
+    { label: 'Active Swarms', value: activeSwarms, sub: `${swarms.length} total`, icon: Network, color: '#7c3aed' },
+    { label: 'Running Tasks', value: runningTasks, sub: `${tasks.length} total`, icon: ListTodo, color: '#00ff88' },
+    { label: 'Tokens Used', value: formatNumber(totalTokens), sub: `${formatNumber(metrics.token_usage_per_min)}/min`, icon: Zap, color: '#f0abfc' },
   ];
 
   const statusColors: Record<string, string> = {
@@ -42,7 +47,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2 text-xs">
           <div className={`w-2 h-2 rounded-full ${connected ? 'bg-[#00ff88] animate-pulse' : 'bg-red-500'}`} />
           <span className={connected ? 'text-[#00ff88]' : 'text-red-400'}>{connected ? 'LIVE' : 'CONNECTING...'}</span>
-          <span className="text-[rgba(255,255,255,0.3)] ml-2">Uptime: {formatUptime(mockSystemMetrics.uptime_seconds)}</span>
+          <span className="text-[rgba(255,255,255,0.3)] ml-2">Uptime: {formatUptime(metrics.uptime_seconds)}</span>
         </div>
       </div>
 
@@ -113,7 +118,7 @@ export default function DashboardPage() {
             </tr>
           </thead>
           <tbody>
-            {mockAgents.map(agent => (
+            {agents.map(agent => (
               <tr key={agent.agent_id} className="border-b border-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.02)]">
                 <td className="py-2 font-medium text-white">{agent.name}</td>
                 <td className="py-2 text-[rgba(255,255,255,0.5)]">{agent.role}</td>

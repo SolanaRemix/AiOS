@@ -1,6 +1,6 @@
 'use client';
 
-import { mockSwarms, mockAgents } from '@/lib/mock-data';
+import { useControlPanelStore } from '@/store';
 import { Network, Plus, Bot, ListTodo, Activity } from 'lucide-react';
 import { timeAgo } from '@/lib/utils';
 
@@ -18,9 +18,11 @@ const swarmStatusColors: Record<string, string> = {
 };
 
 export default function SwarmsPage() {
-  const totalAgents = mockAgents.length;
-  const activeSwarms = mockSwarms.filter(s => s.status === 'active').length;
-  const totalTasks = mockSwarms.reduce((sum, s) => sum + s.task_count, 0);
+  const swarms = useControlPanelStore(s => s.swarms);
+  const agents = useControlPanelStore(s => s.agents);
+  const totalAgents = agents.length;
+  const activeSwarms = swarms.filter(s => s.status === 'active').length;
+  const totalTasks = swarms.reduce((sum, s) => sum + s.task_count, 0);
 
   return (
     <div className="space-y-6">
@@ -39,7 +41,7 @@ export default function SwarmsPage() {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Total Swarms', value: mockSwarms.length, color: '#00f5ff', icon: Network },
+          { label: 'Total Swarms', value: swarms.length, color: '#00f5ff', icon: Network },
           { label: 'Active Swarms', value: activeSwarms, color: '#00ff88', icon: Activity },
           { label: 'Total Agents', value: totalAgents, color: '#7c3aed', icon: Bot },
           { label: 'Running Tasks', value: totalTasks, color: '#f0abfc', icon: ListTodo },
@@ -56,8 +58,8 @@ export default function SwarmsPage() {
 
       {/* Swarm Cards */}
       <div className="grid grid-cols-2 gap-4">
-        {mockSwarms.map(swarm => {
-          const swarmAgents = mockAgents.filter(a => swarm.agent_ids.includes(a.agent_id));
+        {swarms.map(swarm => {
+          const swarmAgents = agents.filter(a => swarm.agent_ids.includes(a.agent_id));
           const typeColor = swarmTypeColors[swarm.type] || '#00f5ff';
           const statusColor = swarmStatusColors[swarm.status] || '#6b7280';
 
