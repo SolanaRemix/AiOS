@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../config/database';
 import { authenticate } from '../middleware/auth';
 import { requireRole } from '../middleware/rbac';
@@ -61,7 +62,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     return;
   }
   try {
-    const plan = await prisma.plan.create({ data: result.data });
+    const plan = await prisma.plan.create({ data: { ...result.data, limits: result.data.limits as Prisma.InputJsonValue } });
     res.status(201).json(plan);
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
@@ -76,9 +77,13 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
     return;
   }
   try {
+    const { limits, ...rest } = result.data;
     const plan = await prisma.plan.update({
       where: { id: req.params.id },
-      data: result.data,
+      data: {
+        ...rest,
+        ...(limits !== undefined && { limits: limits as Prisma.InputJsonValue }),
+      },
     });
     res.json(plan);
   } catch (err) {

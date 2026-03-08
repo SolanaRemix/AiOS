@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "build:android": "eas build --platform android",
     "build:ios": "eas build --platform ios",
-    "lint": "eslint app src --ext .ts,.tsx"
+    "lint": "eslint app src --ext .ts,.tsx",
+    "test": "jest --passWithNoTests"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",

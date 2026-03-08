@@ -12,7 +12,8 @@
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
-    "dist:linux": "electron-builder --linux"
+    "dist:linux": "electron-builder --linux",
+    "test": "jest --passWithNoTests"
   },
   "dependencies": {
     "electron-is-dev": "^3.0.1",

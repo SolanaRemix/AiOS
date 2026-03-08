@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../config/database';
 import { logger } from '../config/logger';
 
@@ -66,7 +67,7 @@ export class ProjectService {
       data: {
         name: input.name,
         description: input.description,
-        metadata: input.metadata ?? {},
+        metadata: (input.metadata ?? {}) as Prisma.InputJsonValue,
         tenantId: input.tenantId,
         userId: input.userId,
         status: 'active',
@@ -87,7 +88,7 @@ export class ProjectService {
           ...(data.name !== undefined && { name: data.name }),
           ...(data.description !== undefined && { description: data.description }),
           ...(data.status !== undefined && { status: data.status }),
-          ...(data.metadata !== undefined && { metadata: data.metadata }),
+          ...(data.metadata !== undefined && { metadata: data.metadata as Prisma.InputJsonValue }),
         },
         include: { user: { select: { id: true, name: true, email: true } } },
       });
