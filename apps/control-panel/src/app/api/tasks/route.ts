@@ -18,12 +18,12 @@ export async function POST(request: Request) {
     body && typeof body === 'object'
       ? {
           task_id: 'mocked-task-id',
-          status: 'mocked',
+          status: 'pending',
           ...(body as Record<string, unknown>),
         }
       : {
           task_id: 'mocked-task-id',
-          status: 'mocked',
+          status: 'pending',
         };
 
   return NextResponse.json(
@@ -49,7 +49,7 @@ export async function PATCH(request: Request) {
 
   const responsePayload: Record<string, unknown> = {
     action: 'retry',
-    status: 'mocked',
+    status: 'running',
     requestBody: body,
   };
 

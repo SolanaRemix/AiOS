@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   // Mock implementation: echo the requested payload and assign a fake ID.
   const body = await request.json().catch(() => ({}));
   const createdAgent = {
-    id: 'mock-created-id',
+    agent_id: 'mock-created-id',
     ...body,
   };
 
@@ -21,7 +21,9 @@ export async function PATCH(request: NextRequest) {
   // Prefer ID from query params (for CLI compatibility), then JSON body (id or agent_id),
   // and finally fall back to a mock ID.
   const searchParams = request.nextUrl?.searchParams;
-  const idFromQuery = searchParams ? searchParams.get('id') ?? undefined : undefined;
+  const idFromQuery = searchParams
+    ? searchParams.get('id') ?? searchParams.get('agent_id') ?? undefined
+    : undefined;
 
   const body = await request.json().catch(() => ({} as { id?: string; agent_id?: string }));
   const idFromBody = (body as { id?: string }).id;
@@ -31,7 +33,7 @@ export async function PATCH(request: NextRequest) {
 
   const updatedAgent = {
     ...body,
-    id: resolvedId,
+    agent_id: resolvedId,
   };
 
   return NextResponse.json({ agent: updatedAgent }, { status: 200 });
@@ -39,22 +41,27 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   // Mock implementation: accept an ID via JSON body or query params and return a confirmation.
-  let id: string | undefined;
-
-  // Try to read ID from query string first.
+  // Prefer ID from query params (for CLI compatibility), then JSON body (id or agent_id),
+  // and finally fall back to a mock ID.
   const searchParams = request.nextUrl?.searchParams;
-  if (searchParams) {
-    id = searchParams.get('id') ?? undefined;
+  const idFromQuery = searchParams
+    ? searchParams.get('id') ?? searchParams.get('agent_id') ?? undefined
+    : undefined;
+
+  let idFromBody: string | undefined;
+  if (!idFromQuery) {
+    const body = await request.json().catch(
+      () => ({} as { id?: string; agent_id?: string }),
+    );
+    idFromBody =
+      (body as { id?: string }).id ??
+      (body as { agent_id?: string }).agent_id;
   }
 
-  // Fallback: try to read ID from JSON body.
-  if (!id) {
-    const body = await request.json().catch(() => ({} as { id?: string }));
-    id = (body as { id?: string }).id;
-  }
+  const resolvedId = idFromQuery ?? idFromBody ?? 'mock-deleted-id';
 
   return NextResponse.json(
-    { success: true, id: id ?? 'mock-deleted-id' },
+    { success: true, id: resolvedId, agent_id: resolvedId },
     { status: 200 },
   );
 }

@@ -26,7 +26,10 @@ const eventTypeLabels: Record<SecurityEvent['type'], string> = {
 };
 
 export default function SecurityPage() {
-  const { securityEvents, resolveSecurityEvent, activateKillSwitch, killSwitchActive } = useControlPanelStore();
+  const securityEvents = useControlPanelStore(state => state.securityEvents);
+  const resolveSecurityEvent = useControlPanelStore(state => state.resolveSecurityEvent);
+  const activateKillSwitch = useControlPanelStore(state => state.activateKillSwitch);
+  const killSwitchActive = useControlPanelStore(state => state.killSwitchActive);
   const [severityFilter, setSeverityFilter] = useState<Severity>('all');
   const [resolvedFilter, setResolvedFilter] = useState<ResolvedFilter>('all');
   const [killConfirm, setKillConfirm] = useState(false);
