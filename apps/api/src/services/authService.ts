@@ -56,7 +56,7 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, this.SALT_ROUNDS);
 
-    const [tenant, user] = await prisma.$transaction(async (tx: typeof prisma) => {
+    const [tenant, user] = await prisma.$transaction(async (tx) => {
       const t = await tx.tenant.create({
         data: { name: tenantName, slug: uniqueSlug, plan: 'free', status: 'active' },
       });
