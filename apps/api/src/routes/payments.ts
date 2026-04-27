@@ -91,6 +91,13 @@ router.post('/paypal/create-order', async (req: Request, res: Response): Promise
 // ─── POST /payments/paypal/capture-order/:orderId ────────────────────────────
 router.post('/paypal/capture-order/:orderId', async (req: Request, res: Response): Promise<void> => {
   const { orderId } = req.params;
+
+  // Validate orderId to prevent SSRF – PayPal order IDs are alphanumeric + hyphens only
+  if (!/^[A-Z0-9-]{1,64}$/i.test(orderId)) {
+    res.status(400).json({ error: 'Invalid order ID format' });
+    return;
+  }
+
   try {
     const clientId     = process.env.PAYPAL_CLIENT_ID     ?? '';
     const clientSecret = process.env.PAYPAL_CLIENT_SECRET ?? '';

@@ -62,6 +62,8 @@ interface WasmArbitrageModule {
 
 let wasmModule: WasmArbitrageModule | null = null;
 
+const WASM_MODULE_PATH = '../../wasm/solana_arbitrage.js';
+
 /**
  * Lazily loads the WASM module.  Falls back to a mock stub when the
  * compiled binary is not present (development / CI environments).
@@ -72,7 +74,7 @@ async function loadWasmModule(): Promise<WasmArbitrageModule> {
   try {
     // Dynamic import so the server starts even without the binary
     const wasm = await import(
-      /* webpackIgnore: true */ '../../wasm/solana_arbitrage.js' as string
+      /* webpackIgnore: true */ WASM_MODULE_PATH as string
     ) as WasmArbitrageModule;
     wasmModule = wasm;
     logger.info('Solana arbitrage WASM module loaded');

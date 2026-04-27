@@ -190,7 +190,7 @@ export default function PromptsPage() {
             My Prompts
           </h1>
           <p className="text-white/40 text-sm mt-0.5">
-            Create, manage, and monetise your AI prompts
+            Create, manage, and monetize your AI prompts
           </p>
         </div>
         <Button variant="gradient" onClick={openCreate}>
