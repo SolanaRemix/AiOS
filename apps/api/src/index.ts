@@ -18,6 +18,10 @@ import billingRoutes from './routes/billing';
 import adminRoutes from './routes/admin';
 import planRoutes from './routes/plans';
 import jobRoutes from './routes/jobs';
+import socialRoutes from './routes/social';
+import promptRoutes from './routes/prompts';
+import solanaRoutes from './routes/solana';
+import paymentRoutes from './routes/payments';
 
 const app: Application = express();
 const PORT = process.env.PORT ?? 4000;
@@ -94,6 +98,10 @@ app.use('/api/billing', billingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use('/api/social', socialRoutes);
+app.use('/api/prompts', promptRoutes);
+app.use('/api/solana', solanaRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // ─── 404 handler ──────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {
