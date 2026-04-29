@@ -7,6 +7,8 @@
  * can start without a compiled binary.
  */
 
+import path from 'path';
+import { pathToFileURL } from 'url';
 import { logger } from '../config/logger';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -62,7 +64,7 @@ interface WasmArbitrageModule {
 
 let wasmModule: WasmArbitrageModule | null = null;
 
-const WASM_MODULE_PATH = '../../wasm/solana_arbitrage.js';
+const WASM_MODULE_PATH = path.resolve(__dirname, '../../wasm/solana_arbitrage.js');
 
 /**
  * Lazily loads the WASM module.  Falls back to a mock stub when the
@@ -72,10 +74,8 @@ async function loadWasmModule(): Promise<WasmArbitrageModule> {
   if (wasmModule) return wasmModule;
 
   try {
-    // Dynamic import so the server starts even without the binary
-    const wasm = await import(
-      /* webpackIgnore: true */ WASM_MODULE_PATH as string
-    ) as WasmArbitrageModule;
+    // Resolve via file URL so the path survives TypeScript compilation
+    const wasm = await import(pathToFileURL(WASM_MODULE_PATH).href) as WasmArbitrageModule;
     wasmModule = wasm;
     logger.info('Solana arbitrage WASM module loaded');
     return wasmModule;
@@ -182,9 +182,22 @@ export class SolanaArbitrageService {
     try {
       const wasm = await loadWasmModule();
 
-      const keypairBytes = new Uint8Array(
-        Buffer.from(process.env.SOLANA_KEYPAIR_BASE64 ?? '', 'base64')
-      );
+      const keypairBase64 = process.env.SOLANA_KEYPAIR_BASE64;
+      if (!keypairBase64) {
+        return {
+          success: false,
+          error: 'SOLANA_KEYPAIR_BASE64 env var is not configured',
+          durationMs: Date.now() - start,
+        };
+      }
+      const keypairBytes = new Uint8Array(Buffer.from(keypairBase64, 'base64'));
+      if (keypairBytes.length === 0) {
+        return {
+          success: false,
+          error: 'SOLANA_KEYPAIR_BASE64 decoded to an empty buffer – check the env var value',
+          durationMs: Date.now() - start,
+        };
+      }
 
       const raw = wasm.execute_arbitrage(
         JSON.stringify(opportunity, (_k, v) =>
@@ -212,6 +225,9 @@ export class SolanaArbitrageService {
         txSignature: result.txSignature,
         riskScore: 0,
       });
+      if (this.auditLog.length > 1000) {
+        this.auditLog.splice(0, this.auditLog.length - 1000);
+      }
 
       if (result.success) {
         logger.info('Arbitrage executed', {

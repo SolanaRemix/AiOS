@@ -12,19 +12,42 @@ router.use(authenticate, tenantIsolation);
 const arbitrageService = new SolanaArbitrageService();
 
 const configSchema = z.object({
-  slippageTolerance: z.number().min(0).max(0.1).optional(),
-  minProfitLamports: z.number().min(0).optional(),
-  maxHops: z.number().min(1).max(5).optional(),
-  useLeverage: z.boolean().optional(),
+  slippageTolerance: z.coerce.number().min(0).max(0.1).optional(),
+  minProfitLamports: z.coerce.number().min(0).optional(),
+  maxHops: z.coerce.number().int().min(1).max(5).optional(),
+  useLeverage: z
+    .preprocess((v: unknown) => {
+      if (v === 'true') return true;
+      if (v === 'false') return false;
+      return v;
+    }, z.boolean())
+    .optional(),
+});
+
+const executeSchema = z.object({
+  id: z.string().min(1),
+  tokenA: z.string().min(1),
+  tokenB: z.string().min(1),
+  dexIn: z.string().optional(),
+  dexOut: z.string().optional(),
+  amountIn: z.string().regex(/^\d+$/, 'amountIn must be a non-negative integer string').optional(),
+  expectedProfit: z
+    .string()
+    .regex(/^\d+$/, 'expectedProfit must be a non-negative integer string')
+    .optional(),
+  route: z.array(z.string()).optional(),
+  timestamp: z.number().optional(),
 });
 
 // ─── GET /solana/opportunities – scan for arb windows ────────────────────────
 router.get('/opportunities', async (req: Request, res: Response): Promise<void> => {
   try {
     const config = configSchema.safeParse(req.query);
-    const opportunities = await arbitrageService.scanOpportunities(
-      config.success ? config.data : {}
-    );
+    if (!config.success) {
+      res.status(400).json({ error: 'Invalid query parameters', details: config.error.flatten() });
+      return;
+    }
+    const opportunities = await arbitrageService.scanOpportunities(config.data);
     res.json({
       opportunities: opportunities.map((o) => ({
         ...o,
@@ -45,22 +68,12 @@ router.post(
   '/execute',
   requireRole(['admin', 'super-admin']),
   async (req: Request, res: Response): Promise<void> => {
-    const body = req.body as {
-      id?: string;
-      tokenA?: string;
-      tokenB?: string;
-      dexIn?: string;
-      dexOut?: string;
-      amountIn?: string;
-      expectedProfit?: string;
-      route?: string[];
-      timestamp?: number;
-    };
-
-    if (!body.id || !body.tokenA || !body.tokenB) {
-      res.status(400).json({ error: 'Missing required opportunity fields' });
+    const parsed = executeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() });
       return;
     }
+    const body = parsed.data;
 
     try {
       const opportunity = {

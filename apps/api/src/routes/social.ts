@@ -81,6 +81,15 @@ router.post('/follow/:userId', async (req: Request, res: Response): Promise<void
     return;
   }
   try {
+    // Verify the target user exists and belongs to the current tenant
+    const targetUser = await prisma.user.findFirst({
+      where: { id: req.params.userId, tenantId: req.tenant!.id },
+    });
+    if (!targetUser) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
     // Ensure both users have profiles
     const [followerProfile, followingProfile] = await Promise.all([
       prisma.userProfile.upsert({
@@ -112,6 +121,15 @@ router.post('/follow/:userId', async (req: Request, res: Response): Promise<void
 // ─── DELETE /social/follow/:userId – unfollow a user ─────────────────────────
 router.delete('/follow/:userId', async (req: Request, res: Response): Promise<void> => {
   try {
+    // Verify target user belongs to the current tenant
+    const targetUser = await prisma.user.findFirst({
+      where: { id: req.params.userId, tenantId: req.tenant!.id },
+    });
+    if (!targetUser) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
     const followerProfile = await prisma.userProfile.findUnique({ where: { userId: req.user!.sub } });
     const followingProfile = await prisma.userProfile.findUnique({ where: { userId: req.params.userId } });
 
@@ -175,14 +193,15 @@ router.get('/following', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// ─── GET /social/timeline – public prompts feed ───────────────────────────────
+// ─── GET /social/timeline – public prompts feed (tenant-scoped) ───────────────
 router.get('/timeline', async (req: Request, res: Response): Promise<void> => {
   const page  = parseInt(req.query.page  as string) || 1;
   const limit = parseInt(req.query.limit as string) || 20;
 
   try {
+    const where = { visibility: 'public', tenantId: req.tenant!.id };
     const prompts = await prisma.prompt.findMany({
-      where: { visibility: 'public' },
+      where,
       include: {
         user: { select: { id: true, name: true } },
         _count: { select: { likes: true } },
@@ -191,7 +210,7 @@ router.get('/timeline', async (req: Request, res: Response): Promise<void> => {
       skip: (page - 1) * limit,
       take: limit,
     });
-    const total = await prisma.prompt.count({ where: { visibility: 'public' } });
+    const total = await prisma.prompt.count({ where });
     res.json({ prompts, total, page, limit });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });

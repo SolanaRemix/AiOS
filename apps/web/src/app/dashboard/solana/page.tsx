@@ -393,7 +393,10 @@ export default function SolanaArbitragePage() {
                     </p>
                   </div>
                   {log.txSignature && (
-                    <button className="text-white/20 hover:text-white/50 transition-all flex-shrink-0">
+                    <button
+                      aria-label={`View transaction details for ${log.txSignature}`}
+                      className="text-white/20 hover:text-white/50 transition-all flex-shrink-0"
+                    >
                       <Eye className="w-3.5 h-3.5" />
                     </button>
                   )}

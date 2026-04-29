@@ -9,12 +9,17 @@ import { logger } from '../config/logger';
 const router = Router();
 router.use(authenticate, tenantIsolation);
 
+// ─── Provider base URLs (configurable for sandbox ↔ live switching) ───────────
+const PAYPAL_BASE_URL = process.env.PAYPAL_BASE_URL ?? 'https://api-m.sandbox.paypal.com';
+const SQUARE_BASE_URL = process.env.SQUARE_BASE_URL ?? 'https://connect.squareupsandbox.com';
+
 // ─── Validation schemas ───────────────────────────────────────────────────────
 const createPaymentSchema = z.object({
-  amount:   z.number().positive(),
-  currency: z.string().length(3).default('usd'),
-  provider: z.enum(['paypal', 'cashapp']),
-  metadata: z.record(z.unknown()).optional(),
+  amount:         z.number().positive(),
+  currency:       z.string().length(3).default('usd'),
+  provider:       z.enum(['paypal', 'cashapp']),
+  metadata:       z.record(z.unknown()).optional(),
+  idempotencyKey: z.string().min(1).max(128).optional(),
 });
 
 // ─── POST /payments/paypal/create-order ──────────────────────────────────────
@@ -31,7 +36,7 @@ router.post('/paypal/create-order', async (req: Request, res: Response): Promise
     const clientSecret = process.env.PAYPAL_CLIENT_SECRET ?? '';
 
     // Obtain PayPal access token
-    const tokenRes = await fetch('https://api-m.sandbox.paypal.com/v1/oauth2/token', {
+    const tokenRes = await fetch(`${PAYPAL_BASE_URL}/v1/oauth2/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -45,7 +50,7 @@ router.post('/paypal/create-order', async (req: Request, res: Response): Promise
     }
 
     // Create the order
-    const orderRes = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
+    const orderRes = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -102,7 +107,7 @@ router.post('/paypal/capture-order/:orderId', async (req: Request, res: Response
     const clientId     = process.env.PAYPAL_CLIENT_ID     ?? '';
     const clientSecret = process.env.PAYPAL_CLIENT_SECRET ?? '';
 
-    const tokenRes = await fetch('https://api-m.sandbox.paypal.com/v1/oauth2/token', {
+    const tokenRes = await fetch(`${PAYPAL_BASE_URL}/v1/oauth2/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -110,10 +115,13 @@ router.post('/paypal/capture-order/:orderId', async (req: Request, res: Response
       },
       body: 'grant_type=client_credentials',
     });
-    const tokenData = await tokenRes.json() as { access_token?: string };
+    const tokenData = await tokenRes.json() as { access_token?: string; error?: string };
+    if (!tokenRes.ok || !tokenData.access_token) {
+      throw new Error(tokenData.error ?? 'PayPal auth failed');
+    }
 
     const captureRes = await fetch(
-      `https://api-m.sandbox.paypal.com/v2/checkout/orders/${orderId}/capture`,
+      `${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`,
       {
         method: 'POST',
         headers: {
@@ -152,8 +160,11 @@ router.post('/cashapp/create-payment', async (req: Request, res: Response): Prom
     // CashApp Pay uses Square's Payments API under the hood
     const squareToken = process.env.SQUARE_ACCESS_TOKEN ?? '';
     const locationId  = process.env.SQUARE_LOCATION_ID  ?? '';
+    // Stable key per checkout attempt: client-supplied preferred; generated UUID as fallback.
+    // Callers should persist and re-send the same key on retries to avoid duplicate charges.
+    const idempotencyKey = result.data.idempotencyKey ?? crypto.randomUUID();
 
-    const paymentRes = await fetch('https://connect.squareupsandbox.com/v2/payments', {
+    const paymentRes = await fetch(`${SQUARE_BASE_URL}/v2/payments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -161,7 +172,7 @@ router.post('/cashapp/create-payment', async (req: Request, res: Response): Prom
         'Square-Version': '2024-01-18',
       },
       body: JSON.stringify({
-        idempotency_key: `${req.user!.sub}_${Date.now()}`,
+        idempotency_key: idempotencyKey,
         source_id: 'CASH_APP',
         amount_money: {
           amount: Math.round(amount * 100), // cents

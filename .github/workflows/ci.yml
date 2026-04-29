@@ -26,6 +26,9 @@ jobs:
         run: npm ci
       - name: Generate Prisma Client
         run: npm run db:generate
+        env:
+          DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/aios_test
+          DIRECT_URL: postgresql://postgres:testpassword@localhost:5432/aios_test
       - name: Lint All Workspaces
         run: npm run lint --workspaces
       - name: Type Check Workspaces

@@ -356,6 +356,7 @@ export default function MarketplacePage() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleLike(item.id)}
+                      aria-label={item.isLiked ? 'Unlike prompt' : 'Like prompt'}
                       className={`p-1 rounded transition-all ${item.isLiked ? "text-pink-400" : "text-white/30 hover:text-pink-400"}`}
                     >
                       <Heart className={`w-3.5 h-3.5 ${item.isLiked ? "fill-current" : ""}`} />
