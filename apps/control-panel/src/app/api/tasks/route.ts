@@ -76,8 +76,7 @@ export async function DELETE(request: Request) {
   // Attempt to resolve a task identifier from query params or body
   const bodyTaskId =
     typeof body === 'object' && body !== null
-      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ((body as any).task_id ?? (body as any).id ?? null)
+      ? ((body as Record<string, unknown>).task_id ?? (body as Record<string, unknown>).id ?? null)
       : null;
 
   const taskId = queryTaskId ?? bodyTaskId ?? null;

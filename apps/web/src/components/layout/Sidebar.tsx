@@ -19,6 +19,10 @@ import {
   Users,
   Activity,
   Cpu,
+  Globe,
+  BookOpen,
+  ShoppingBag,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -79,6 +83,31 @@ const navItems: NavItem[] = [
     label: "Settings",
     icon: Settings,
     section: "Account",
+  },
+  {
+    href: "/dashboard/social",
+    label: "Timeline",
+    icon: Globe,
+    section: "Social",
+  },
+  {
+    href: "/dashboard/prompts",
+    label: "My Prompts",
+    icon: BookOpen,
+    section: "Social",
+  },
+  {
+    href: "/dashboard/marketplace",
+    label: "Marketplace",
+    icon: ShoppingBag,
+    section: "Social",
+  },
+  {
+    href: "/dashboard/solana",
+    label: "Arbitrage",
+    icon: TrendingUp,
+    badge: "LIVE",
+    section: "Trade",
   },
 ];
 

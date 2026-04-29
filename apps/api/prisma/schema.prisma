@@ -31,6 +31,8 @@ model Tenant {
   billing      Billing?
   secrets      Secret[]
   embeddings   VectorEmbedding[]
+  prompts      Prompt[]
+  payments     Payment[]
 
   @@index([slug])
   @@index([status])
@@ -52,6 +54,10 @@ model User {
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   projects Project[]
   usage    Usage[]
+  profile  UserProfile?
+  prompts  Prompt[]
+  promptLikes PromptLike[]
+  payments    Payment[]
 
   @@index([tenantId])
   @@index([email])
@@ -294,4 +300,111 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ─── UserProfile (public social profile) ─────────────────────────────────────
+model UserProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  bio       String?
+  avatar    String?
+  website   String?
+  twitter   String?
+  github    String?
+  isPublic  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  following  Follow[] @relation("Follower")
+  followers  Follow[] @relation("Following")
+
+  @@index([userId])
+  @@map("user_profiles")
+}
+
+// ─── Follow (social follow graph) ────────────────────────────────────────────
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  UserProfile @relation("Follower",  fields: [followerId],  references: [id], onDelete: Cascade)
+  following UserProfile @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("follows")
+}
+
+// ─── Prompt (AI prompt marketplace) ─────────────────────────────────────────
+model Prompt {
+  id          String   @id @default(cuid())
+  userId      String
+  tenantId    String
+  title       String
+  content     String
+  description String?
+  tags        String[] @default([])
+  category    String   @default("general")
+  visibility  String   @default("private") // public | private
+  price       Float    @default(0)          // 0 = free
+  isFeatured  Boolean  @default(false)
+  viewCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user   User         @relation(fields: [userId],   references: [id], onDelete: Cascade)
+  tenant Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  likes  PromptLike[]
+
+  @@index([userId])
+  @@index([tenantId])
+  @@index([visibility])
+  @@index([category])
+  @@index([createdAt])
+  @@map("prompts")
+}
+
+// ─── PromptLike (prompt reactions) ───────────────────────────────────────────
+model PromptLike {
+  id        String   @id @default(cuid())
+  promptId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  prompt Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId],   references: [id], onDelete: Cascade)
+
+  @@unique([promptId, userId])
+  @@index([promptId])
+  @@index([userId])
+  @@map("prompt_likes")
+}
+
+// ─── Payment (CashApp / PayPal / Stripe payment intents) ─────────────────────
+model Payment {
+  id          String   @id @default(cuid())
+  tenantId    String
+  userId      String
+  provider    String   // stripe | paypal | cashapp
+  externalId  String?  @unique // provider-side payment/intent ID
+  amount      Float
+  currency    String   @default("usd")
+  status      String   @default("pending") // pending | completed | failed | refunded
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user   User   @relation(fields: [userId],   references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([provider])
+  @@index([status])
+  @@index([createdAt])
+  @@map("payments")
 }
