@@ -13,7 +13,7 @@
     "db:generate": "npm run db:generate --workspace=apps/api"
   },
   "devDependencies": {
-    "turbo": "^1.13.3",
+    "turbo": "^2.9.14",
     "typescript": "^5.3.3",
     "prettier": "^3.2.5",
     "eslint": "^8.57.0"
